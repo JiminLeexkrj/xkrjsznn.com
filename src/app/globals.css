@@ -8,3 +8,44 @@ body {
   background: #000000;
   color: #ffffff;
 }
+
+/* 등장 순서: 로딩(검은 화면) → 로고 → 글자가 위아래에서 교차하며 동시에 채워짐 */
+@media (prefers-reduced-motion: no-preference) {
+  [data-intro] .intro-logo,
+  [data-intro] .intro-letter {
+    visibility: hidden;
+  }
+
+  [data-intro="play"] .intro-logo {
+    visibility: visible;
+    animation: intro-logo 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  [data-intro="play"] .intro-letter {
+    visibility: visible;
+    animation: intro-letter 1.5s cubic-bezier(0.76, 0, 0.24, 1) both;
+    animation-delay: 0.7s;
+  }
+}
+
+@keyframes intro-logo {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+    filter: blur(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes intro-letter {
+  from {
+    transform: translateY(var(--from));
+  }
+  to {
+    transform: none;
+  }
+}
