@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-display: var(--font-anton);
+}
+
+body {
+  background: #000000;
+  color: #ffffff;
+}
