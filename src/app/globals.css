@@ -49,3 +49,8 @@ body {
     transform: none;
   }
 }
+
+/* 로딩과 등장 애니메이션 동안에는 스크롤을 막음(IntroStage가 끝나면 속성을 뗌) */
+[data-scroll-locked] .intro-scroller {
+  overflow-y: hidden;
+}
