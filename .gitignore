@@ -39,7 +39,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-# design source files (kept locally only)
-/logo_black.png
-/page1.pdf
