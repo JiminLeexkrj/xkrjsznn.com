@@ -43,7 +43,7 @@ export const viewport: Viewport = {
 const enteredScript = `try{if(sessionStorage.getItem("xk-entered"))document.documentElement.dataset.entered="instant"}catch(e){}`;
 
 // 스크립트가 꺼져 있으면 진입 화면 없이 바로 보여준다
-const noScriptStyle = `.intro{display:none!important}body{overflow:auto!important}.cut{opacity:1!important}`;
+const noScriptStyle = `.intro{display:none!important}body{overflow:auto!important}.cut,main,header{opacity:1!important;pointer-events:auto!important}`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   const fonts = [archivo, hahmlet, unifraktur, shippori].map((f) => f.variable).join(" ");

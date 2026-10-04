@@ -46,8 +46,9 @@ export function Floor({ lite }: { lite: boolean }) {
 
   return (
     <>
-      <mesh rotation-x={-Math.PI / 2} position={[0, 0, -60]}>
-        <planeGeometry args={[320, 320]} />
+      <mesh rotation-x={-Math.PI / 2} position={[0, 0, -40]}>
+        {/* 진입 장면이 펼쳐지는 입구 너머까지 덮는다 */}
+        <planeGeometry args={[560, 560]} />
         {lite ? (
           <meshStandardMaterial color="#040303" roughness={0.9} metalness={0.3} />
         ) : (

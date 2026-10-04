@@ -12,15 +12,17 @@ export type Waypoint = {
 };
 
 export const RING = { center: new Vector3(0, 7, -140), radius: 11 };
+/** 영역 입구 너머의 허공. 진입 화면이 여기서 펼쳐지고, 카메라는 이곳을 뚫고 영역 안으로 들어간다. */
+export const INTRO = { center: new Vector3(0, 7, 84), camera: new Vector3(0, 7.3, 100) };
 export const WORKS_ROOM = new Vector3(5.5, 2.6, -55);
 export const TROPHY_HALL = new Vector3(0, 0, -86);
 
 export const waypoints: Waypoint[] = [
   { section: "identity", lead: 0, position: new Vector3(0, 1.7, 10), target: new Vector3(0, 2.8, -30) },
-  { section: "dossier", lead: 0.25, position: new Vector3(-2.5, 2.4, -14), target: new Vector3(3.5, 3.4, -34) },
-  { section: "works", lead: 0.25, position: new Vector3(1.6, 1.6, -38), target: WORKS_ROOM.clone() },
-  { section: "trophies", lead: 0.25, position: new Vector3(0, 4.4, -68), target: new Vector3(0, 1.2, -86) },
-  { section: "contact", lead: 0.85, position: new Vector3(0, 2.4, -96), target: RING.center.clone() },
+  { section: "dossier", lead: 0, position: new Vector3(-2.5, 2.4, -14), target: new Vector3(3.5, 3.4, -34) },
+  { section: "works", lead: 0, position: new Vector3(1.6, 1.6, -38), target: WORKS_ROOM.clone() },
+  { section: "trophies", lead: 0, position: new Vector3(1.4, 3.0, -76), target: new Vector3(2.2, 2.2, -88) },
+  { section: "contact", lead: 0.4, position: new Vector3(0, 2.4, -96), target: RING.center.clone() },
   // 마지막에는 고리가 화면을 크게 감싸는 자리에서 멈춘다
   { section: null, lead: 0, position: new Vector3(0, 4.2, -115), target: new Vector3(0, 7.4, -140) },
 ];

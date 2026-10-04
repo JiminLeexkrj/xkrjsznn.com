@@ -64,6 +64,16 @@ html:not([data-entered]) body {
   overflow: hidden;
 }
 
+/* 진입 화면 뒤로 3D 세계가 비치므로, 들어오기 전에는 사이트를 감춰 둔다 */
+html:not([data-entered]) :is(main, body > header) {
+  opacity: 0;
+  pointer-events: none;
+}
+
+body > header {
+  transition: opacity 1s ease-out 0.6s;
+}
+
 html[data-entered="instant"] .intro {
   display: none;
 }

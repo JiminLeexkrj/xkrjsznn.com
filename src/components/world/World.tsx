@@ -10,9 +10,11 @@ import { DomainRing } from "./DomainRing";
 import { Dust } from "./Dust";
 import { Effects } from "./Effects";
 import { Floor } from "./Floor";
+import { IntroShards } from "./IntroShards";
 import { TROPHY_HALL, generateMonoliths } from "./layout";
 import { Monoliths } from "./Monoliths";
 import { ProjectSlabs } from "./ProjectSlabs";
+import { TrophyHall } from "./TrophyHall";
 
 type Quality = { lite: boolean; reduced: boolean };
 
@@ -64,13 +66,15 @@ function Scene({ lite, reduced }: Quality) {
       <Floor lite={lite} />
       <DomainRing reduced={reduced} />
       <ProjectSlabs reduced={reduced} />
-      {!reduced && <Dust count={lite ? 700 : 1800} />}
+      <TrophyHall reduced={reduced} />
+      <IntroShards count={lite ? 46 : 80} reduced={reduced} />
+      {!reduced && <Dust count={lite ? 1000 : 2600} />}
       <Effects lite={lite} />
     </>
   );
 }
 
-// 화면 뒤에 고정된 3D 영역. HTML 장면들은 이 위로 스크롤된다.
+// 화면 뒤에 고정된 3D 영역. 진입 화면도 이 세계 안에서 펼쳐지고, HTML 장면들은 이 위로 스크롤된다.
 export default function World() {
   const entered = useEntered();
   const [ready, setReady] = useState(false);
@@ -83,15 +87,13 @@ export default function World() {
     <div
       aria-hidden
       className={`pointer-events-none fixed inset-0 z-0 transition-opacity duration-[1800ms] ease-out ${
-        entered && ready ? "opacity-100" : "opacity-0"
+        ready ? "opacity-100" : "opacity-0"
       }`}
     >
       <Canvas
-        // 진입 화면 동안에는 한 번만 그려 셰이더를 미리 컴파일해 둔다
-        frameloop={entered ? "always" : "demand"}
         dpr={quality.lite ? [1, 1.25] : [1, 1.5]}
         gl={{ antialias: false, powerPreference: "high-performance" }}
-        camera={{ fov: 50, near: 0.1, far: 240, position: [0, 4.2, 26] }}
+        camera={{ fov: 50, near: 0.1, far: 240, position: [0, 7.3, 100] }}
         onCreated={() => setReady(true)}
       >
         {/* 순수한 검정보다 아주 조금 뜬 안개. 먼 기둥이 실루엣으로 떠올라 깊이가 생긴다. */}
@@ -100,7 +102,11 @@ export default function World() {
         <Scene {...quality} />
       </Canvas>
       {/* 글이 놓이는 왼쪽을 살짝 가라앉혀 읽기 쉽게 한다 */}
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.6),rgba(0,0,0,0.15)_55%,transparent)]" />
+      <div
+        className={`absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.6),rgba(0,0,0,0.15)_55%,transparent)] transition-opacity duration-1000 ${
+          entered ? "opacity-100" : "opacity-0"
+        }`}
+      />
     </div>
   );
 }

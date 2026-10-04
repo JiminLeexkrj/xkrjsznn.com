@@ -3,6 +3,8 @@
 type State = {
   /** 마우스를 올린 프로젝트의 순서. 없으면 null */
   hoveredProject: number | null;
+  /** 목록에서 마우스를 올린 수상의 순서. 없으면 null */
+  hoveredAward: number | null;
   /** -1–1, 화면 중앙이 0 */
   pointer: { x: number; y: number };
   /** 0–1, 스크롤 속도 */
@@ -11,6 +13,7 @@ type State = {
 
 export const world: State = {
   hoveredProject: null,
+  hoveredAward: null,
   pointer: { x: 0, y: 0 },
   velocity: 0,
 };

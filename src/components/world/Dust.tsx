@@ -43,7 +43,7 @@ export function Dust({ count }: { count: number }) {
     const positions: number[] = [];
     const seeds: number[] = [];
     for (let i = 0; i < count; i++) {
-      positions.push((rand() - 0.5) * 40, rand() * 24, 20 - rand() * 170);
+      positions.push((rand() - 0.5) * 40, rand() * 24, 140 - rand() * 290);
       seeds.push(rand());
     }
     const g = new BufferGeometry();

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { profile } from "@/content/profile";
+import { IMPLODE, REVEAL_AT, burstProgress, intro } from "@/lib/intro-store";
 import { sound } from "@/lib/sound";
 import { SoundToggle } from "../SoundToggle";
 import { createDomainRenderer } from "./domain-renderer";
@@ -22,11 +23,18 @@ function randomGlyph(char: string) {
   return GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
 }
 
-type Phase = "idle" | "expanding" | "done";
+/**
+ * idle: 기다리는 중
+ * world: 3D 세계 안에서 조각이 압축되고 터지며 카메라가 날아든다
+ * flat: 3D가 아직 준비되지 않아 2D 셰이더로 대신 펼친다
+ * fade: 움직임 줄이기 설정이거나 WebGL이 없어 그냥 걷힌다
+ */
+type Phase = "idle" | "world" | "flat" | "fade" | "done";
 
 export function Intro() {
   const [done, setDone] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const codeRef = useRef<HTMLParagraphElement>(null);
   const promptRef = useRef<HTMLDivElement>(null);
@@ -40,57 +48,103 @@ export function Intro() {
     if (root.dataset.entered) return;
 
     const overlay = overlayRef.current!;
+    const backdrop = backdropRef.current!;
+    const canvas = canvasRef.current!;
     const cells = Array.from(codeRef.current!.children) as HTMLElement[];
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const renderer = reduced ? null : createDomainRenderer(canvasRef.current!);
+    let flat = reduced ? null : createDomainRenderer(canvas);
 
     let phase: Phase = "idle";
     let hold = 0;
-    let expandStart = 0;
+    let phaseStart = 0;
     let lastGlyph = 0;
+    let worldShown = false;
     const start = performance.now();
     let last = start;
     let raf = 0;
 
-    const enter = () => {
-      phase = "expanding";
-      expandStart = performance.now();
+    const markEntered = () => {
+      if (root.dataset.entered) return;
       root.dataset.entered = "1";
       try {
         sessionStorage.setItem(ENTERED_KEY, "1");
       } catch {}
+    };
+
+    const dropFlat = () => {
+      flat?.destroy();
+      flat = null;
+    };
+
+    const enter = () => {
+      phaseStart = performance.now();
       sound.impact();
-      if (renderer) overlay.style.background = "transparent";
+      if (intro.ready && !reduced) {
+        phase = "world";
+        intro.burstStart = phaseStart;
+      } else if (flat) {
+        phase = "flat";
+        markEntered();
+        backdrop.style.opacity = "0";
+      } else {
+        phase = "fade";
+        markEntered();
+      }
     };
 
     const finish = () => {
       phase = "done";
-      renderer?.destroy();
+      markEntered();
+      dropFlat();
       setDone(true);
     };
 
     const tick = () => {
       const now = performance.now();
-      const dt = Math.min(now - last, 50);
+      // 프레임이 느린 기기에서도 누르는 시간이 늘어나지 않게, 탭 전환 같은 큰 공백만 잘라 낸다
+      const dt = Math.min(now - last, 200);
       last = now;
       const { holding, center, skip } = input.current;
 
       if (skip && phase !== "done") {
-        if (phase === "idle") enter();
         finish();
         return;
       }
 
-      let expand = 0;
+      // 3D 세계가 준비되면 검은 막을 걷고 그 뒤의 허공을 보여 준다
+      if (!worldShown && intro.ready && phase === "idle") {
+        worldShown = true;
+        backdrop.style.opacity = "0";
+        canvas.style.opacity = "0";
+        setTimeout(dropFlat, 1200);
+      }
+
       if (phase === "idle") {
         hold = Math.min(1, Math.max(0, hold + (holding ? dt / HOLD_MS : -dt / RELEASE_MS)));
+        intro.hold = hold;
         sound.setTension(hold);
         if (hold >= 1) enter();
       }
-      if (phase === "expanding") {
-        expand = Math.min(1, (now - expandStart) / (renderer ? EXPAND_MS : FADE_MS));
-        if (!renderer) overlay.style.opacity = String(1 - expand);
-        if (expand >= 1) {
+
+      // 글자가 흩어지는 정도. 0이면 그대로, 1이면 다 사라졌다.
+      let out = 0;
+      let flatExpand = 0;
+      if (phase === "world") {
+        const b = burstProgress(now);
+        out = Math.min(1, b / IMPLODE);
+        if (b >= REVEAL_AT) markEntered();
+        // 착지할 즈음 겹쳐 있던 진입 화면이 걷힌다
+        overlay.style.opacity = String(1 - Math.min(1, Math.max(0, (b - REVEAL_AT) / (1 - REVEAL_AT))));
+        if (b >= 1) {
+          finish();
+          return;
+        }
+      } else if (phase === "flat" || phase === "fade") {
+        const duration = phase === "flat" ? EXPAND_MS : FADE_MS;
+        flatExpand = Math.min(1, (now - phaseStart) / duration);
+        out = Math.min(1, flatExpand / 0.12);
+        if (phase === "fade") overlay.style.opacity = String(1 - flatExpand);
+        if (flatExpand >= 1) {
           finish();
           return;
         }
@@ -101,7 +155,7 @@ export function Intro() {
       if (swap) lastGlyph = now;
       cells.forEach((cell, i) => {
         const resolved = now - start > 350 + i * 110;
-        const glitch = phase === "expanding" || (resolved && Math.random() < hold * hold * 0.35);
+        const glitch = out > 0 || (resolved && Math.random() < hold * hold * 0.35);
         if (!resolved || glitch) {
           if (swap) cell.textContent = randomGlyph(CODE[i]);
         } else if (cell.textContent !== CODE[i]) {
@@ -110,8 +164,7 @@ export function Intro() {
       });
 
       const code = codeRef.current!;
-      if (phase === "expanding") {
-        const out = Math.min(1, expand / 0.12);
+      if (out > 0) {
         for (const el of [code, promptRef.current!, controlsRef.current!]) el.style.opacity = String(1 - out);
         code.style.transform = `scale(${1 + out * 0.6})`;
       } else {
@@ -121,7 +174,9 @@ export function Intro() {
       }
       barRef.current!.style.transform = `scaleX(${hold})`;
 
-      renderer?.render({ time: (now - start) / 1000, hold, expand, center });
+      if (flat && (!worldShown || phase === "flat")) {
+        flat.render({ time: (now - start) / 1000, hold, expand: flatExpand, center });
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -144,7 +199,7 @@ export function Intro() {
       cancelAnimationFrame(raf);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
-      if (phase !== "done") renderer?.destroy();
+      dropFlat();
     };
   }, []);
 
@@ -161,20 +216,26 @@ export function Intro() {
   return (
     <div
       ref={overlayRef}
-      className="intro fixed inset-0 z-[60] touch-none bg-void select-none [-webkit-touch-callout:none]"
+      className="intro fixed inset-0 z-[60] touch-none select-none [-webkit-touch-callout:none]"
       onPointerDown={press}
       onPointerUp={release}
       onPointerCancel={release}
       onPointerLeave={release}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <canvas ref={canvasRef} aria-hidden className="absolute inset-0 h-full w-full" />
+      {/* 3D 세계가 준비되기 전까지 가리는 막. 준비되면 걷혀 뒤의 허공이 보인다. */}
+      <div ref={backdropRef} aria-hidden className="absolute inset-0 bg-void transition-opacity duration-[1200ms]" />
+      <canvas
+        ref={canvasRef}
+        aria-hidden
+        className="absolute inset-0 h-full w-full transition-opacity duration-[1200ms]"
+      />
 
       <div className="relative flex h-full flex-col items-center justify-center px-4">
         <p
           ref={codeRef}
           aria-label={profile.code}
-          className="flex text-[clamp(3rem,13vw,9.5rem)] leading-none text-dust will-change-transform"
+          className="flex text-[clamp(3rem,13vw,9.5rem)] leading-none text-dust will-change-transform [text-shadow:0_0_40px_rgba(0,0,0,0.8)]"
           style={{ fontFamily: "var(--font-unifraktur), var(--font-hahmlet), var(--font-shippori), serif" }}
         >
           {CODE.map((_, i) => (

@@ -2,13 +2,24 @@
 
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
-import { MathUtils, PerspectiveCamera, Vector3 } from "three";
+import { CatmullRomCurve3, MathUtils, PerspectiveCamera, Vector3 } from "three";
+import { burstProgress, intro } from "@/lib/intro-store";
 import { world } from "@/lib/world-store";
-import { positionCurve, targetCurve, waypoints } from "./layout";
+import { easeInOutCubic } from "./colors";
+import { INTRO, positionCurve, targetCurve, waypoints } from "./layout";
 
 const BASE_FOV = 50;
 const PORTRAIT_FOV = 60;
 const pullbackDir = new Vector3();
+
+// 진입 장면에서 터진 중심을 뚫고 영역 입구까지 날아 들어가는 길
+const landing = waypoints[0].position.clone().add(new Vector3(0, 0.8, 5));
+const diveCurve = new CatmullRomCurve3([
+  INTRO.camera.clone(),
+  INTRO.center.clone().add(new Vector3(0, 0.3, 0)),
+  new Vector3(0, 5, 46),
+  landing,
+]);
 
 /** transform 애니메이션 중에도 흔들리지 않는 문서 기준 위치 */
 function pageTop(el: HTMLElement) {
@@ -19,14 +30,14 @@ function pageTop(el: HTMLElement) {
   return top;
 }
 
-/** 방에 머무는 구간을 두고, 방과 방 사이는 부드럽게 잇는다 */
+/** 구간의 앞뒤 22%는 방에 머물고, 그 사이를 부드럽게 잇는다 */
 function dwell(t: number) {
-  const x = MathUtils.clamp((t - 0.12) / 0.76, 0, 1);
+  const x = MathUtils.clamp((t - 0.22) / 0.56, 0, 1);
   return x * x * x * (x * (x * 6 - 15) + 10);
 }
 
 // 스크롤 위치를 영역 안의 카메라 위치로 바꾼다.
-// 각 장면이 화면 위쪽에 닿을 즈음 카메라가 그 장면의 방에 도착한다.
+// 장면 꼭대기가 화면 위에 닿을 때 카메라가 그 장면의 방에 서 있다.
 export function CameraRig({ reduced }: { reduced: boolean }) {
   const anchors = useRef<number[]>([]);
   const state = useRef({
@@ -34,6 +45,7 @@ export function CameraRig({ reduced }: { reduced: boolean }) {
     position: waypoints[0].position.clone().add(new Vector3(0, 2.5, 16)),
     look: waypoints[0].target.clone(),
     lastScroll: 0,
+    skippedIntro: false,
   });
 
   useEffect(() => {
@@ -68,6 +80,45 @@ export function CameraRig({ reduced }: { reduced: boolean }) {
     if (a.length < 2) return;
     const s = state.current;
     const scroll = window.scrollY;
+    const aspect = three.size.width / Math.max(three.size.height, 1);
+    const baseFov = aspect < 1 ? PORTRAIT_FOV : BASE_FOV;
+
+    // 진입 화면: 허공을 바라보다가, 폭발하면 그 중심을 뚫고 영역으로 날아든다
+    const b = burstProgress();
+    const entered = Boolean(document.documentElement.dataset.entered);
+    if ((!entered && !s.skippedIntro) || (b > 0 && b < 1)) {
+      const pos = goalPosition.current;
+      const look = goalLook.current;
+      if (b === 0) {
+        // 세로 화면에서는 소용돌이가 다 들어오도록 뒤로 물러선다
+        pos.copy(INTRO.camera).setZ(INTRO.camera.z + Math.max(0, 1 - aspect) * 16);
+        look.copy(INTRO.center);
+        if (!reduced) {
+          pos.x += world.pointer.x * 0.8;
+          pos.y += world.pointer.y * 0.5;
+          const shake = Math.max(0, intro.hold - 0.6) * 0.18;
+          pos.x += (Math.random() - 0.5) * shake;
+          pos.y += (Math.random() - 0.5) * shake;
+        }
+        world.velocity = MathUtils.damp(world.velocity, 0, 5, delta);
+      } else {
+        const travel = easeInOutCubic(MathUtils.clamp((b - 0.05) / 0.85, 0, 1));
+        diveCurve.getPoint(travel, pos);
+        look.copy(INTRO.center).lerp(waypoints[0].target, easeInOutCubic(MathUtils.clamp((b - 0.2) / 0.7, 0, 1)));
+        // 날아드는 동안 시야가 넓어지고 색이 갈라진다
+        world.velocity = Math.sin(Math.PI * MathUtils.clamp((b - 0.06) / 0.8, 0, 1));
+      }
+      s.position.copy(pos);
+      s.look.copy(look);
+      camera.position.copy(pos);
+      camera.lookAt(look);
+      camera.fov = baseFov + world.velocity * 22;
+      camera.updateProjectionMatrix();
+      s.lastScroll = scroll;
+      return;
+    }
+    // 건너뛰기나 2D 연출로 들어온 경우엔 진입 장면을 다시 보지 않는다
+    if (entered) s.skippedIntro = true;
 
     let segment = 0;
     while (segment < a.length - 2 && scroll >= a[segment + 1]) segment++;
@@ -79,7 +130,6 @@ export function CameraRig({ reduced }: { reduced: boolean }) {
     const look = targetCurve.getPoint(u, goalLook.current);
 
     // 세로 화면은 가로 시야가 좁으므로 카메라를 시선 반대쪽으로 조금 물린다
-    const aspect = three.size.width / Math.max(three.size.height, 1);
     const pullback = Math.max(0, 1 - aspect) * 18;
     if (pullback > 0) pos.addScaledVector(pullbackDir.subVectors(pos, look).normalize(), pullback);
 
@@ -107,7 +157,7 @@ export function CameraRig({ reduced }: { reduced: boolean }) {
     s.lastScroll = scroll;
     world.velocity = MathUtils.damp(world.velocity, reduced ? 0 : MathUtils.clamp(speed / 2500, 0, 1), 5, delta);
     camera.rotateZ(-world.pointer.x * 0.025 * (reduced ? 0 : 1));
-    camera.fov = (aspect < 1 ? PORTRAIT_FOV : BASE_FOV) + world.velocity * 16;
+    camera.fov = baseFov + world.velocity * 16;
     camera.updateProjectionMatrix();
   });
 

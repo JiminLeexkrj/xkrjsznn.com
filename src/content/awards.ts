@@ -17,5 +17,8 @@ export const awards: Award[] = [
   { event: "SUNRIN IoT 아이디어 공모전", prize: "동상", medal: "bronze", year: 2022 },
 ];
 
+/** 화면과 3D 홀이 같은 순서를 쓰도록 한곳에서 정렬한다 */
+export const awardsByYear = () => [...awards].sort((a, b) => b.year - a.year);
+
 /** 트로피룸에 앞으로 채울 빈 받침대 개수 */
 export const reservedPlinths = 2;
