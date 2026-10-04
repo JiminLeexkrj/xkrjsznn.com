@@ -4,10 +4,12 @@ import { Dossier } from "@/components/chambers/Dossier";
 import { Identity } from "@/components/chambers/Identity";
 import { TrophyRoom } from "@/components/chambers/TrophyRoom";
 import { Works } from "@/components/chambers/Works";
+import { Intro } from "@/components/intro/Intro";
 
 export default function Home() {
   return (
     <>
+      <Intro />
       <Frame />
       <main>
         <Identity />

@@ -15,7 +15,7 @@ export function Identity() {
       <p
         lang="ko"
         aria-hidden
-        className="absolute top-24 right-12 font-ko text-[min(17vw,17svh)] leading-none font-black whitespace-nowrap text-blood [writing-mode:vertical-rl] md:top-28 md:right-24"
+        className="cut cut-drop absolute top-24 right-12 font-ko text-[min(17vw,17svh)] leading-none font-black whitespace-nowrap text-blood [writing-mode:vertical-rl] md:top-28 md:right-24"
       >
         {profile.name.ko}
       </p>
@@ -24,12 +24,12 @@ export function Identity() {
         id="identity-title"
         className="relative text-[clamp(4.5rem,19vw,20rem)] leading-[0.78] font-black uppercase"
       >
-        <span className="block wdth-125">{first}</span>
-        <span className="block wdth-62">{rest.join(" ")}</span>
+        <span className="cut cut-name-a block wdth-125">{first}</span>
+        <span className="cut cut-name-b block wdth-62">{rest.join(" ")}</span>
         <span className="sr-only"> ({profile.name.ko})</span>
       </h1>
 
-      <div className="relative mt-8 flex flex-wrap items-end justify-between gap-x-10 gap-y-3 md:mt-12">
+      <div className="cut cut-fade relative mt-8 flex flex-wrap items-end justify-between gap-x-10 gap-y-3 md:mt-12">
         <p className="wdth-112 text-lg md:text-2xl">{profile.role}</p>
         <p lang="ko" className="font-ko text-base text-ash md:text-lg">
           {profile.status}

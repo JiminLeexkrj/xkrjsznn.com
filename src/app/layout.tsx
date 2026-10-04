@@ -38,10 +38,22 @@ export const viewport: Viewport = {
   themeColor: "#000000",
 };
 
+// 첫 페인트 전에 실행된다. 이번 세션에 이미 들어왔다면 진입 화면을 건너뛴다.
+const enteredScript = `try{if(sessionStorage.getItem("xk-entered"))document.documentElement.dataset.entered="instant"}catch(e){}`;
+
+// 스크립트가 꺼져 있으면 진입 화면 없이 바로 보여준다
+const noScriptStyle = `.intro{display:none!important}body{overflow:auto!important}.cut{opacity:1!important}`;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   const fonts = [archivo, hahmlet, unifraktur, shippori].map((f) => f.variable).join(" ");
   return (
-    <html lang="ko" className={`${fonts} antialiased`}>
+    <html lang="ko" className={`${fonts} antialiased`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: enteredScript }} />
+        <noscript>
+          <style>{noScriptStyle}</style>
+        </noscript>
+      </head>
       <body>{children}</body>
     </html>
   );

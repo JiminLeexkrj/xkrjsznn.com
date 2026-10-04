@@ -1,4 +1,5 @@
 import { Logo } from "./Logo";
+import { SoundToggle } from "./SoundToggle";
 
 const chambers = [
   { id: "dossier", label: "Dossier" },
@@ -13,20 +14,23 @@ export function Frame() {
       <a href="#identity" aria-label="처음으로">
         <Logo className="text-2xl md:text-3xl" />
       </a>
-      <nav aria-label="장면">
-        <ul className="flex gap-4 text-sm md:gap-8 md:text-base">
-          {chambers.map((c) => (
-            <li key={c.id}>
-              <a
-                href={`#${c.id}`}
-                className="wdth-75 transition-[font-variation-settings,color] duration-300 hover:wdth-125 hover:text-blood"
-              >
-                {c.label}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <div className="flex flex-col items-end gap-2">
+        <nav aria-label="장면">
+          <ul className="flex gap-4 text-sm md:gap-8 md:text-base">
+            {chambers.map((c) => (
+              <li key={c.id}>
+                <a
+                  href={`#${c.id}`}
+                  className="wdth-75 transition-[font-variation-settings,color] duration-300 hover:wdth-125 hover:text-blood"
+                >
+                  {c.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <SoundToggle className="text-sm" />
+      </div>
     </header>
   );
 }
