@@ -11,14 +11,15 @@ export const profile = {
   code: "xkrjsznn",
   role: "AI & full-stack developer",
   status: "아직 도달하는 중",
+  // 위에서부터 이 순서로 보인다
   dossier: [
-    { label: "소속", value: "GDGOC KU", period: "2026.08 –" },
-    { label: "학교", value: "고려대학교 정보대학 데이터과학과", period: "2026.03 –" },
-    { label: "기반", value: "Seoul" },
-    { label: "출생", value: "2006" },
+    { label: "School", value: "Korea University, Department of Data Science", period: "2026.03 –" },
+    { label: "Affiliation", value: "GDGOC KU", period: "2026.08 –" },
+    { label: "Based", value: "Seoul" },
+    { label: "Born", value: "2006" },
     {
-      label: "출신",
-      value: "선린인터넷고등학교 정보보호과",
+      label: "Origin",
+      value: "Sunrin Internet High School, Information Security",
       period: "2022.03 – 2025.02",
       past: true,
     },
