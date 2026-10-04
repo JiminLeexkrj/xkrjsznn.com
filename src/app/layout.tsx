@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Archivo, Hahmlet, Shippori_Mincho, UnifrakturCook } from "next/font/google";
+import "lenis/dist/lenis.css";
 import "./globals.css";
 
 // 영문 본문과 디스플레이. 폭(wdth) 축을 장체부터 평체까지 쓴다.

@@ -18,7 +18,7 @@ export function Chamber({ id, title, mark, children }: ChamberProps) {
       <VerticalMark>{mark}</VerticalMark>
       <h2
         id={`${id}-title`}
-        className="wdth-62 text-[clamp(3.5rem,13vw,11rem)] leading-[0.82] font-black text-dust"
+        className="recede wdth-62 text-[clamp(3.5rem,13vw,11rem)] leading-[0.82] font-black text-dust"
       >
         {title}
       </h2>
