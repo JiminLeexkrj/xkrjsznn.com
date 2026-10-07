@@ -21,15 +21,15 @@ export function Effects({ lite }: { lite: boolean }) {
   if (lite) {
     return (
       <EffectComposer multisampling={0} resolutionScale={0.5}>
-        <Bloom mipmapBlur intensity={1} luminanceThreshold={0.6} luminanceSmoothing={0.2} />
-        <Vignette darkness={0.8} offset={0.25} />
+        <Bloom mipmapBlur intensity={1} luminanceThreshold={0.92} luminanceSmoothing={0.2} />
+        <Vignette darkness={0.6} offset={0.3} />
       </EffectComposer>
     );
   }
 
   return (
     <EffectComposer multisampling={0}>
-      <Bloom mipmapBlur intensity={1.15} luminanceThreshold={0.6} luminanceSmoothing={0.2} radius={0.75} />
+      <Bloom mipmapBlur intensity={1.15} luminanceThreshold={0.92} luminanceSmoothing={0.2} radius={0.75} />
       <ChromaticAberration
         ref={aberration}
         blendFunction={BlendFunction.NORMAL}
@@ -37,7 +37,7 @@ export function Effects({ lite }: { lite: boolean }) {
         radialModulation
         modulationOffset={0.25}
       />
-      <Vignette darkness={0.85} offset={0.25} />
+      <Vignette darkness={0.6} offset={0.3} />
     </EffectComposer>
   );
 }

@@ -18,9 +18,24 @@ uniform float uMaxRadius;
 
 out vec4 outColor;
 
-const vec3 RED = vec3(0.757, 0.071, 0.122);
-const vec3 VIOLET = vec3(0.478, 0.173, 0.941);
+// 세 영역: 虚 hollow, 氷 frost, 熾 ember
+const vec3 HOLLOW = vec3(0.482, 0.361, 1.0);
+const vec3 FROST = vec3(0.475, 0.847, 0.918);
+const vec3 EMBER = vec3(0.925, 0.604, 0.227);
 const vec3 DUST = vec3(0.851, 0.827, 0.780);
+
+vec3 domainColor(float k) {
+  k = mod(k, 3.0);
+  return k < 1.0 ? HOLLOW : k < 2.0 ? FROST : EMBER;
+}
+
+// 원을 세 영역이 나눠 갖는다. 경계는 좁게 섞여 서로를 밀어낸다.
+vec3 triad(vec2 dir, float turn) {
+  float s = (atan(dir.y, dir.x) / 6.2831853 + 0.5 + turn) * 3.0;
+  float k = floor(s);
+  float f = smoothstep(0.82, 1.0, fract(s));
+  return mix(domainColor(k), domainColor(k + 1.0), f);
+}
 
 float hash(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
@@ -60,7 +75,7 @@ void main() {
   float h = uHold;
   float hh = h * h;
 
-  // 누르는 동안 붉은 에너지가 고리 쪽으로 빨려 들어간다
+  // 누르는 동안 세 영역의 에너지가 고리 쪽으로 빨려 들어간다
   float speed = 0.35 + hh * 3.5;
   float streaks = fbm(dir * 9.0 + vec2(logR * 2.5 + uTime * speed, logR * 1.3 - uTime * speed * 0.5));
   streaks = smoothstep(0.5, 0.9, streaks);
@@ -71,10 +86,12 @@ void main() {
   float ring = exp(-pow((r - ringRadius) / ringWidth, 2.0));
   float gather = smoothstep(ringRadius * 3.2, ringRadius * 0.9, r);
 
+  // 누를수록 세 영역이 빨리 돌며 서로를 밀어낸다
+  vec3 tri = triad(dir, uTime * (0.03 + hh * 0.4));
   vec3 col = vec3(0.0);
-  col += RED * streaks * gather * (0.12 + hh * 1.1);
-  col += RED * ring * (0.25 + h * 1.6);
-  col += VIOLET * exp(-r / mix(0.02, 0.09, hh)) * smoothstep(0.55, 1.0, h) * 0.9;
+  col += tri * streaks * gather * (0.12 + hh * 1.1);
+  col += tri * ring * (0.25 + h * 1.6);
+  col += DUST * exp(-r / mix(0.02, 0.09, hh)) * smoothstep(0.55, 1.0, h) * 0.9;
   col += DUST * 0.03 * fbm(uv * 3.0 + uTime * 0.05);
   col *= 1.0 - smoothstep(0.4, 1.4, r) * 0.6 * h;
 
@@ -97,9 +114,9 @@ void main() {
     float band = exp(-pow((r - jagged) / 0.035, 2.0)) * opened;
     float flash = smoothstep(0.0, contract, e) * (1.0 - smoothstep(contract, contract + 0.18, e));
     float bandFade = 1.0 - smoothstep(0.75, 1.0, e);
-    vec3 edge = mix(VIOLET, RED, smoothstep(contract, 0.6, e));
+    vec3 edge = triad(dir, uTime * 0.2);
 
-    col += VIOLET * flash * (exp(-r * 4.0) * 1.5 + 0.15);
+    col += DUST * flash * (exp(-r * 4.0) * 1.5 + 0.15);
     col *= 1.0 - inside;
     col += edge * band * 1.4 * bandFade;
     alpha = max(1.0 - inside, band * 0.8 * bandFade);

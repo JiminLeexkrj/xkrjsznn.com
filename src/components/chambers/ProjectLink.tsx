@@ -9,7 +9,7 @@ type ProjectLinkProps = {
   children: React.ReactNode;
 };
 
-// 마우스를 올리거나 키보드로 초점을 옮기면 3D 공간의 해당 석판이 돌아선다
+// 마우스를 올리거나 키보드로 초점을 옮긴 프로젝트를 3D 공간에 알린다
 export function ProjectLink({ index, href, className, children }: ProjectLinkProps) {
   const enter = () => {
     world.hoveredProject = index;
@@ -24,6 +24,7 @@ export function ProjectLink({ index, href, className, children }: ProjectLinkPro
       target="_blank"
       rel="noreferrer"
       className={className}
+      data-project-index={index}
       onPointerEnter={enter}
       onPointerLeave={leave}
       onFocus={enter}

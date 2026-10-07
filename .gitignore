@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 3D 글자용 폰트 (scripts/build-gl-fonts.mjs가 생성)
+/public/fonts/gl/

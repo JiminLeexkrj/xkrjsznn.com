@@ -1,12 +1,11 @@
 import { CatmullRomCurve3, Vector3 } from "three";
+import type { STOPS } from "@/lib/timeline";
 
 // 영역 안의 배치. 단위는 대략 미터. 카메라는 -Z 방향으로 걸어 들어간다.
 
 export type Waypoint = {
-  /** 이 지점에 대응하는 HTML 장면 id. 마지막 지점은 페이지 끝에 대응한다. */
-  section: string | null;
-  /** 장면 꼭대기가 화면 위에서 이만큼(화면 높이 비율) 아래에 있을 때 도착한다 */
-  lead: number;
+  /** 이 지점에 대응하는 장면 id. 순서는 timeline.ts의 STOPS와 같다. */
+  section: (typeof STOPS)[number];
   position: Vector3;
   target: Vector3;
 };
@@ -18,14 +17,23 @@ export const WORKS_ROOM = new Vector3(5.5, 2.6, -55);
 export const TROPHY_HALL = new Vector3(0, 0, -86);
 
 export const waypoints: Waypoint[] = [
-  { section: "identity", lead: 0, position: new Vector3(0, 1.7, 10), target: new Vector3(0, 2.8, -30) },
-  { section: "dossier", lead: 0, position: new Vector3(-2.5, 2.4, -14), target: new Vector3(3.5, 3.4, -34) },
-  { section: "works", lead: 0, position: new Vector3(1.6, 1.6, -38), target: WORKS_ROOM.clone() },
-  { section: "trophies", lead: 0, position: new Vector3(1.4, 3.0, -76), target: new Vector3(2.2, 2.2, -88) },
-  { section: "contact", lead: 0.4, position: new Vector3(0, 2.4, -96), target: RING.center.clone() },
-  // 마지막에는 고리가 화면을 크게 감싸는 자리에서 멈춘다
-  { section: null, lead: 0, position: new Vector3(0, 4.2, -115), target: new Vector3(0, 7.4, -140) },
+  { section: "identity", position: new Vector3(0, 1.7, 10), target: new Vector3(0, 2.8, -30) },
+  { section: "dossier", position: new Vector3(-2.5, 2.4, -14), target: new Vector3(3.5, 3.4, -34) },
+  { section: "works", position: new Vector3(1.6, 1.6, -38), target: WORKS_ROOM.clone() },
+  { section: "trophies", position: new Vector3(1.4, 3.0, -76), target: new Vector3(2.2, 2.2, -88) },
+  // 마지막 방에서는 영역의 고리가 화면을 크게 감싼다
+  { section: "contact", position: new Vector3(0, 4.2, -115), target: new Vector3(0, 7.4, -140) },
 ];
+
+/** 화면 비율에 따른 기본 시야각. 세로 화면은 넓게 본다. */
+export const fovFor = (aspect: number) => (aspect < 1 ? 60 : 50);
+
+/** 세로 화면은 가로 시야가 좁으므로 카메라를 시선 반대쪽으로 물린다 */
+export function applyPullback(position: Vector3, look: Vector3, aspect: number) {
+  const pullback = Math.max(0, 1 - aspect) * 18;
+  if (pullback > 0) position.addScaledVector(new Vector3().subVectors(position, look).normalize(), pullback);
+  return position;
+}
 
 export const positionCurve = new CatmullRomCurve3(
   waypoints.map((w) => w.position),
@@ -77,7 +85,28 @@ export function generateMonoliths(density = 1): Slab[] {
   const nearWorks = (x: number, z: number) => Math.hypot(x - WORKS_ROOM.x, z - WORKS_ROOM.z) < 6;
   // 마지막 장면에서 고리를 가리지 않도록 고리 앞쪽은 비워 둔다
   const blocksRing = (x: number, z: number, halfWidth = 0) =>
-    z < -104 && Math.abs(x - RING.center.x) - halfWidth < RING.radius + 2.5;
+    (z < -104 && Math.abs(x - RING.center.x) - halfWidth < RING.radius + 2.5) || blocksText(x, z, halfWidth);
+  // 방마다 글자가 떠 있는 시야 앞쪽(카메라에서 8m까지)은 비워 둔다. 구조물이 글을 가리지 않는다.
+  const stops = waypoints.map((w) => ({
+    x: w.position.x,
+    z: w.position.z,
+    fx: w.target.x - w.position.x,
+    fz: w.target.z - w.position.z,
+  }));
+  stops.forEach((s) => {
+    const len = Math.hypot(s.fx, s.fz);
+    s.fx /= len;
+    s.fz /= len;
+  });
+  function blocksText(x: number, z: number, halfWidth: number) {
+    return stops.some((s) => {
+      const dx = x - s.x;
+      const dz = z - s.z;
+      const along = dx * s.fx + dz * s.fz;
+      const lateral = Math.abs(dx * s.fz - dz * s.fx);
+      return along > 0.5 && along < 8 && lateral - halfWidth < along * 0.62;
+    });
+  }
 
   // 길 양옆으로 선 모노리스
   for (let z = 18; z > -150; z -= 3.2 / density) {

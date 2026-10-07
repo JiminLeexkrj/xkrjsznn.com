@@ -8,14 +8,17 @@ export function Identity() {
     <section
       id="identity"
       aria-labelledby="identity-title"
-      className="relative flex min-h-svh flex-col justify-end overflow-hidden px-4 pt-28 pb-8 md:px-10 md:pb-10"
+      data-domain="hollow"
+      className="chamber relative flex min-h-svh flex-col justify-end overflow-hidden px-4 pt-28 pb-8 md:px-10 md:pb-10"
     >
       <VerticalMark>無形</VerticalMark>
 
       <p
         lang="ko"
         aria-hidden
-        className="cut cut-drop absolute top-24 right-12 font-ko text-[min(17vw,17svh)] leading-none font-black whitespace-nowrap text-blood [writing-mode:vertical-rl] md:top-28 md:right-24"
+        // 3D 공간에서는 이름 뒤쪽 깊은 허공에 걸린다
+        data-z="3.5"
+        className="cut cut-drop absolute top-24 right-12 font-ko text-[min(17vw,17svh)] leading-none font-black whitespace-nowrap text-hollow [writing-mode:vertical-rl] md:top-28 md:right-24"
       >
         {profile.name.ko}
       </p>
@@ -29,7 +32,7 @@ export function Identity() {
         <span className="sr-only"> ({profile.name.ko})</span>
       </h1>
 
-      <div className="cut cut-fade relative mt-8 flex flex-wrap items-end justify-between gap-x-10 gap-y-3 md:mt-12">
+      <div data-z="-1.2" className="cut cut-fade relative mt-8 flex flex-wrap items-end justify-between gap-x-10 gap-y-3 md:mt-12">
         <p className="wdth-112 text-lg md:text-2xl">{profile.role}</p>
         <p lang="ko" className="font-ko text-base text-ash md:text-lg">
           {profile.status}

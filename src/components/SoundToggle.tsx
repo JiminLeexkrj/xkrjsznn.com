@@ -28,7 +28,7 @@ export function SoundToggle({ className = "" }: { className?: string }) {
       className={`group flex items-baseline gap-1.5 ${className}`}
     >
       Sound
-      <span className={`wdth-75 transition-colors ${on ? "text-blood" : "text-ash group-hover:text-dust"}`}>
+      <span className={`wdth-75 transition-colors ${on ? "text-hollow" : "text-ash group-hover:text-dust"}`}>
         {on ? "on" : "off"}
       </span>
     </button>

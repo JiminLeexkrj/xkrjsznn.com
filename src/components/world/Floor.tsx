@@ -2,8 +2,8 @@
 
 import { MeshReflectorMaterial } from "@react-three/drei";
 import { useMemo } from "react";
-import { BufferGeometry, Float32BufferAttribute, Vector3 } from "three";
-import { RED, glow } from "./colors";
+import { BufferGeometry, Color, Float32BufferAttribute, Vector3 } from "three";
+import { domainAt } from "./colors";
 import { positionCurve } from "./layout";
 
 /** 카메라 경로를 따라 바닥에 깔린 리본. offset만큼 옆으로 떨어져 있다. */
@@ -16,8 +16,13 @@ function ribbon(offset: number, width: number) {
   points.push(new Vector3(last.x, 0, last.z - 60));
 
   const positions: number[] = [];
+  const colors: number[] = [];
   const indices: number[] = [];
+  const color = new Color();
   points.forEach((p, i) => {
+    // 걸어 들어갈수록 영역의 색이 바뀐다
+    domainAt(p.z, color);
+    colors.push(color.r, color.g, color.b, color.r, color.g, color.b);
     const next = points[Math.min(i + 1, points.length - 1)];
     const prev = points[Math.max(i - 1, 0)];
     const dx = next.x - prev.x;
@@ -36,13 +41,15 @@ function ribbon(offset: number, width: number) {
 
   const geometry = new BufferGeometry();
   geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new Float32BufferAttribute(colors, 3));
   geometry.setIndex(indices);
   return geometry;
 }
 
 export function Floor({ lite }: { lite: boolean }) {
-  const lines = useMemo(() => [ribbon(-1.5, 0.025), ribbon(1.5, 0.025)], []);
-  const lineColor = useMemo(() => glow(RED, 4), []);
+  const lines = useMemo(() => [ribbon(-1.5, 0.018), ribbon(1.5, 0.018)], []);
+  // 꼭짓점 색에 곱해져 블룸이 걸릴 만큼 밝아진다
+  const lineColor = useMemo(() => new Color(2.2, 2.2, 2.2), []);
 
   return (
     <>
@@ -70,7 +77,7 @@ export function Floor({ lite }: { lite: boolean }) {
       </mesh>
       {lines.map((geometry, i) => (
         <mesh key={i} geometry={geometry}>
-          <meshBasicMaterial color={lineColor} toneMapped={false} />
+          <meshBasicMaterial color={lineColor} vertexColors toneMapped={false} />
         </mesh>
       ))}
     </>

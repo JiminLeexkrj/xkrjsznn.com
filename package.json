@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/build-gl-fonts.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/build-gl-fonts.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -17,7 +19,8 @@
     "postprocessing": "^6.39.5",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "three": "^0.186.1"
+    "three": "^0.186.1",
+    "troika-three-text": "^0.52.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -27,6 +30,7 @@
     "@types/three": "^0.186.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
+    "subset-font": "^2.9.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

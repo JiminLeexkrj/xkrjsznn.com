@@ -5,7 +5,7 @@ import { useMemo, useRef } from "react";
 import { BoxGeometry, EdgesGeometry, Group, LineBasicMaterial, MathUtils, PointLight, Vector3 } from "three";
 import { projects } from "@/content/projects";
 import { world } from "@/lib/world-store";
-import { RED } from "./colors";
+import { FROST } from "./colors";
 import { WORKS_ROOM, waypoints } from "./layout";
 
 const SIZE: [number, number, number] = [2.4, 3.6, 0.12];
@@ -52,7 +52,7 @@ export function ProjectSlabs({ reduced }: { reduced: boolean }) {
       const intensity = hovered === null ? 1.4 : active ? 9 : 0.4;
       const current = edge.userData.intensity ?? 1.4;
       edge.userData.intensity = MathUtils.damp(current, intensity, 6, delta);
-      edge.color.copy(RED).multiplyScalar(edge.userData.intensity);
+      edge.color.copy(FROST).multiplyScalar(edge.userData.intensity);
     });
 
     const l = light.current!;
@@ -83,13 +83,13 @@ export function ProjectSlabs({ reduced }: { reduced: boolean }) {
               ref={(el) => {
                 edges.current[i] = el;
               }}
-              color={RED}
+              color={FROST}
               toneMapped={false}
             />
           </lineSegments>
         </group>
       ))}
-      <pointLight ref={light} color={RED} intensity={0} distance={12} decay={2} />
+      <pointLight ref={light} color={FROST} intensity={0} distance={12} decay={2} />
     </>
   );
 }

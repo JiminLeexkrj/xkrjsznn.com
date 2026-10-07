@@ -22,10 +22,11 @@ export function AwardRow({ award, index }: { award: Award; index: number }) {
       onPointerLeave={() => {
         if (world.hoveredAward === index) world.hoveredAward = null;
       }}
-      className="group grid grid-cols-[0.75rem_3rem_1fr_auto] items-baseline gap-x-3 border-b border-concrete py-3 font-ko transition-colors data-[active]:text-blood md:gap-x-4"
+      className="group grid grid-cols-[0.75rem_3rem_1fr_auto] items-baseline gap-x-3 border-b border-dust/15 py-3 font-ko transition-colors data-[active]:text-domain md:gap-x-4"
     >
       <span
         aria-hidden
+        data-gl-swatch={award.medal}
         className="size-3 translate-y-0.5 rounded-full transition-transform group-data-[active]:scale-125"
         style={{ background: swatch[award.medal] }}
       />

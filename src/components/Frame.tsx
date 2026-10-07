@@ -21,7 +21,7 @@ export function Frame() {
               <li key={c.id}>
                 <a
                   href={`#${c.id}`}
-                  className="wdth-75 transition-[font-variation-settings,color] duration-300 hover:wdth-125 hover:text-blood"
+                  className="wdth-75 transition-[font-variation-settings,color] duration-300 hover:wdth-125 hover:text-hollow"
                 >
                   {c.label}
                 </a>

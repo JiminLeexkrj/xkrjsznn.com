@@ -254,7 +254,7 @@ export function Intro() {
             <span className="hidden [@media(pointer:fine)]:inline">, or hold Space</span>
           </p>
           <div aria-hidden className="mt-3 h-px w-40 bg-concrete">
-            <div ref={barRef} className="h-full origin-left scale-x-0 bg-blood" />
+            <div ref={barRef} className="h-full origin-left scale-x-0 bg-[linear-gradient(90deg,var(--color-hollow),var(--color-frost),var(--color-ember))]" />
           </div>
         </div>
       </div>

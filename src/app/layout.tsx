@@ -39,8 +39,9 @@ export const viewport: Viewport = {
   themeColor: "#000000",
 };
 
-// 첫 페인트 전에 실행된다. 이번 세션에 이미 들어왔다면 진입 화면을 건너뛴다.
-const enteredScript = `try{if(sessionStorage.getItem("xk-entered"))document.documentElement.dataset.entered="instant"}catch(e){}`;
+// 첫 페인트 전에 실행된다.
+// 이번 세션에 이미 들어왔다면 진입 화면을 건너뛰고, 움직임을 줄이는 설정이 아니면 장면을 고정 무대에 올린다.
+const enteredScript = `(function(d){try{if(sessionStorage.getItem("xk-entered"))d.dataset.entered="instant"}catch(e){}if(!matchMedia("(prefers-reduced-motion: reduce)").matches)d.dataset.stage="on"})(document.documentElement)`;
 
 // 스크립트가 꺼져 있으면 진입 화면 없이 바로 보여준다
 const noScriptStyle = `.intro{display:none!important}body{overflow:auto!important}.cut,main,header{opacity:1!important;pointer-events:auto!important}`;

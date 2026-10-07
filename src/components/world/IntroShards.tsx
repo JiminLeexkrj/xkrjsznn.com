@@ -1,8 +1,9 @@
 "use client";
 
 import { useFrame } from "@react-three/fiber";
-import { useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
+  Color,
   Group,
   InstancedMesh,
   MathUtils,
@@ -14,7 +15,7 @@ import {
   Vector3,
 } from "three";
 import { IMPLODE, burstProgress, intro } from "@/lib/intro-store";
-import { RED, VIOLET } from "./colors";
+import { DUST, TRIAD } from "./colors";
 import { createConcreteMaterial } from "./concrete-material";
 import { INTRO, rng } from "./layout";
 
@@ -65,6 +66,14 @@ function makeShards(count: number): Shard[] {
 }
 
 const smooth = (t: number) => t * t * (3 - 2 * t);
+/** 세 고리가 처음에 기울어 있는 각도(x, y). 누를수록 풀려 한 면으로 겹친다. */
+const RING_TILTS: [number, number][] = [
+  [0, 0],
+  [0.9, 0.25],
+  [-0.35, 0.95],
+];
+/** 균열은 꼭짓점 색(영역)에 이 밝기를 곱해 빛난다 */
+const CRACK_GLOW = new Color(4, 4, 4);
 
 export function IntroShards({ count, reduced }: { count: number; reduced: boolean }) {
   const shards = useMemo(() => makeShards(count), [count]);
@@ -77,8 +86,7 @@ export function IntroShards({ count, reduced }: { count: number; reduced: boolea
   const bodies = useRef<InstancedMesh>(null);
   const cracks = useRef<InstancedMesh>(null);
   const core = useRef<Mesh>(null);
-  const ring = useRef<Mesh>(null);
-  const halo = useRef<Mesh>(null);
+  const rings = useRef<(Mesh | null)[]>([]);
   const light = useRef<PointLight>(null);
   const state = useRef({ frames: 0, hold: 0, swirl: 0, built: false });
 
@@ -95,6 +103,12 @@ export function IntroShards({ count, reduced }: { count: number; reduced: boolea
     }),
     [],
   );
+
+  // 파편의 균열은 세 영역의 색을 나눠 갖는다
+  useLayoutEffect(() => {
+    cracked.forEach((_, k) => cracks.current!.setColorAt(k, TRIAD[k % 3]));
+    if (cracks.current!.instanceColor) cracks.current!.instanceColor.needsUpdate = true;
+  }, [cracked]);
 
   useFrame((_, rawDelta) => {
     const st = state.current;
@@ -155,36 +169,44 @@ export function IntroShards({ count, reduced }: { count: number; reduced: boolea
     bodies.current!.instanceMatrix.needsUpdate = true;
     cracks.current!.instanceMatrix.needsUpdate = true;
 
-    // 가운데의 붉은 씨앗. 누를수록 달아오르고, 압축되는 순간 보랏빛으로 터진다.
+    // 가운데의 씨앗. 세 영역이 눌려 모일수록 하얗게 달아오르고, 압축되는 순간 터진다.
     const coreMat = core.current!.material as MeshBasicMaterial;
     if (blast > 0) {
       core.current!.scale.setScalar(MathUtils.lerp(2.2, 0, Math.min(1, blast * 4)));
-      coreMat.color.copy(VIOLET).multiplyScalar(30);
+      coreMat.color.copy(DUST).multiplyScalar(30);
     } else {
       core.current!.scale.setScalar(MathUtils.lerp(0.35, 1.1, h) * (1 + implode * 1.2));
-      coreMat.color.copy(RED).lerp(VIOLET, implode).multiplyScalar(2 + h * 10 + implode * 20);
+      coreMat.color.copy(DUST).multiplyScalar(1.2 + h * 6 + implode * 24);
     }
 
-    // 고리는 조여들었다가, 충격파가 되어 카메라 너머로 퍼진다
-    const ringRadius =
-      blast > 0 ? MathUtils.lerp(0.6, 45, 1 - Math.pow(2, -2.8 * blast)) : MathUtils.lerp(6.5, 1.3, h) * (1 - implode * 0.55);
-    const fade = Math.pow(1 - blast, 1.2);
-    ring.current!.scale.set(ringRadius, ringRadius, 1);
-    ring.current!.rotation.z = t * 0.05;
-    (ring.current!.material as MeshBasicMaterial).color
-      .copy(RED)
-      .lerp(VIOLET, blast > 0 ? 0.35 : 0)
-      .multiplyScalar(5 * fade);
-    halo.current!.scale.set(ringRadius * 1.12, ringRadius * 1.12, 1);
-    halo.current!.rotation.z = -t * 0.08;
-    (halo.current!.material as MeshBasicMaterial).color.copy(RED).multiplyScalar(1.4 * fade);
+    // 세 영역의 고리. 서로 다른 축으로 기운 채 돌며 조여들다가, 각자 다른 빠르기의 충격파로 퍼진다.
+    TRIAD.forEach((domainColor, k) => {
+      const ring = rings.current[k];
+      if (!ring) return;
+      const speed = 1 + k * 0.35;
+      const radius =
+        blast > 0
+          ? MathUtils.lerp(0.6, 40 + k * 8, 1 - Math.pow(2, -2.8 * speed * blast))
+          : MathUtils.lerp(6.5 + k * 0.5, 1.2 + k * 0.15, h) * (1 - implode * 0.55);
+      ring.scale.set(radius, radius, 1);
+      ring.rotation.z = t * (0.05 + k * 0.02) * (k % 2 ? -1 : 1);
+      // 누를수록 기울기가 풀려 한 면으로 겹친다. 맞부딪히는 순간이다.
+      const tilt = 1 - h * 0.85 - implode * 0.15;
+      ring.rotation.x = RING_TILTS[k][0] * tilt;
+      ring.rotation.y = RING_TILTS[k][1] * tilt;
+      (ring.material as MeshBasicMaterial).color.copy(domainColor).multiplyScalar((2 + h * 2.5) * Math.pow(1 - blast, 1.2));
+    });
 
+    // 빛은 세 영역을 번갈아 돈다. 누를수록 빨리 돈다.
     const l = light.current!;
+    const phase = (t * 0.35) % 3;
+    const from = TRIAD[Math.floor(phase)];
+    const to = TRIAD[(Math.floor(phase) + 1) % 3];
+    l.color.copy(from).lerp(to, phase % 1);
     if (blast > 0) {
-      l.color.copy(VIOLET);
+      l.color.copy(DUST);
       l.intensity = 500 * Math.pow(1 - blast, 3);
     } else {
-      l.color.copy(RED).lerp(VIOLET, implode);
       l.intensity = 6 + h * 70 + implode * 300;
     }
   });
@@ -196,20 +218,24 @@ export function IntroShards({ count, reduced }: { count: number; reduced: boolea
       </instancedMesh>
       <instancedMesh ref={cracks} args={[undefined, undefined, cracked.length]} frustumCulled={false}>
         <boxGeometry />
-        <meshBasicMaterial color={RED.clone().multiplyScalar(6)} toneMapped={false} />
+        <meshBasicMaterial color={CRACK_GLOW} toneMapped={false} />
       </instancedMesh>
       <mesh ref={core} position={INTRO.center}>
         <sphereGeometry args={[0.3, 32, 16]} />
         <meshBasicMaterial toneMapped={false} />
       </mesh>
-      <mesh ref={ring} position={INTRO.center}>
-        <torusGeometry args={[1, 0.012, 8, 192]} />
-        <meshBasicMaterial toneMapped={false} />
-      </mesh>
-      <mesh ref={halo} position={INTRO.center} rotation-x={0.08}>
-        <torusGeometry args={[1, 0.004, 6, 192]} />
-        <meshBasicMaterial toneMapped={false} />
-      </mesh>
+      {TRIAD.map((_, k) => (
+        <mesh
+          key={k}
+          ref={(el) => {
+            rings.current[k] = el;
+          }}
+          position={INTRO.center}
+        >
+          <torusGeometry args={[1, 0.0055, 8, 192, Math.PI * 1.86]} />
+          <meshBasicMaterial toneMapped={false} />
+        </mesh>
+      ))}
       <pointLight ref={light} position={INTRO.center} distance={40} decay={1.4} />
     </group>
   );

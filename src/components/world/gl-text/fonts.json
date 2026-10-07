@@ -1,0 +1,32 @@
+{
+  "archivo": {
+    "source": "Archivo-VF.ttf",
+    "axes": ["wght", "wdth"],
+    "ladder": [62, 75, 88, 100, 112, 125],
+    "instances": [
+      [900, 62],
+      [900, 75],
+      [900, 88],
+      [900, 100],
+      [900, 112],
+      [900, 125],
+      [700, 62],
+      [700, 75],
+      [700, 88],
+      [700, 100],
+      [700, 112],
+      [700, 125],
+      [600, 75],
+      [400, 75],
+      [400, 100],
+      [400, 112]
+    ]
+  },
+  "hahmlet": {
+    "source": "Hahmlet-VF.ttf",
+    "axes": ["wght"],
+    "instances": [[400], [700], [900]]
+  },
+  "unifraktur": { "source": "UnifrakturCook-Bold.ttf" },
+  "shippori": { "source": "ShipporiMincho-Medium.marks.ttf" }
+}

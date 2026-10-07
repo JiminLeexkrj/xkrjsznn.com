@@ -5,11 +5,27 @@
   --color-dust: #d9d3c7;
   --color-ash: #8c867c;
   --color-concrete: #1f1e1c;
-  --color-blood: #c1121f;
-  --color-hollow: #7a2cf0;
+  /* 세 영역. 서로 맞서되, 한 화면에서 한 가지만 주인공이 된다. */
+  --color-hollow: #7b5cff;
+  --color-frost: #79d8ea;
+  --color-ember: #ec9a3a;
+}
+
+[data-domain="hollow"] {
+  --domain: var(--color-hollow);
+}
+
+[data-domain="frost"] {
+  --domain: var(--color-frost);
+}
+
+[data-domain="ember"] {
+  --domain: var(--color-ember);
 }
 
 @theme inline {
+  /* 지금 방의 영역 색. 가장 가까운 data-domain이 정한다. inline이어야 요소마다 다시 계산된다. */
+  --color-domain: var(--domain, var(--color-hollow));
   --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
   --font-ko: var(--font-hahmlet), var(--font-archivo), serif;
   --font-gothic: var(--font-unifraktur), serif;
@@ -38,12 +54,12 @@ body {
 }
 
 ::selection {
-  background: var(--color-blood);
+  background: var(--color-hollow);
   color: var(--color-void);
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-blood);
+  outline: 2px solid var(--domain, var(--color-hollow));
   outline-offset: 4px;
 }
 
@@ -151,7 +167,9 @@ html:not([data-entered]) .cut {
   opacity: 0;
 }
 
-html[data-entered] main {
+/* 무대 방식에서는 main에 transform을 걸면 그 안의 고정 무대가 풀리므로, 무대 자체를 펼친다 */
+html[data-entered]:not([data-stage]) main,
+html[data-entered][data-stage] .stage {
   animation: unfold 1.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
@@ -169,6 +187,82 @@ html[data-entered] .cut-drop {
 
 html[data-entered] .cut-fade {
   animation: cut-fade 1s cubic-bezier(0.16, 1, 0.3, 1) 1.1s both;
+}
+
+/* 무대 ------------------------------------------------------------------ */
+
+/* 장면들이 화면에 고정되고, 원근 안에서 다가오고 지나간다. 스크롤은 아래 트랙이 만든다. */
+html[data-stage] .stage {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  perspective: 1200px;
+  perspective-origin: 50% 48%;
+}
+
+html[data-stage] .stage-rig {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
+html[data-stage] .chamber {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  transform-origin: 50% 48%;
+  will-change: transform, opacity, filter;
+}
+
+/* 스크립트가 첫 프레임을 그리기 전에는 첫 방만 보인다 */
+html[data-stage] .chamber:not(#identity) {
+  opacity: 0;
+  pointer-events: none;
+}
+
+html[data-stage] .recede {
+  animation: none;
+}
+
+.stage-track {
+  position: relative;
+  height: calc((var(--stops) - 1) * var(--step) * 100lvh + 100lvh);
+  pointer-events: none;
+}
+
+html:not([data-stage]) .stage-track {
+  display: none;
+}
+
+/* 장면이 3D 공간으로 옮겨진 뒤: HTML은 투명한 층으로 남아 스크린리더와 키보드 이동을 맡는다.
+   마우스는 3D 캔버스가 받는다. */
+html[data-gl] main {
+  opacity: 0;
+  pointer-events: none;
+}
+
+html[data-gl] main * {
+  animation: none !important;
+}
+
+/* 3D로 옮기기 위해 재는 복제본. 보이지 않고, 애니메이션과 진입 전 숨김 없이 본래 모습으로 놓인다. */
+[data-measure-root] {
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+
+[data-measure-root] .chamber {
+  opacity: 1 !important;
+}
+
+[data-measure-root] * {
+  animation: none !important;
+  transition: none !important;
+}
+
+[data-measure-root] .cut {
+  opacity: 1 !important;
 }
 
 /* 장면 제목은 본문보다 느리게 움직여 한 겹 뒤에 있는 것처럼 보인다 */
