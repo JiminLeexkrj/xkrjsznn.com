@@ -19,6 +19,7 @@ export default function MeLayout({ children }: LayoutProps<"/me">) {
         <nav aria-label="내 공간" className="flex gap-6 text-sm">
           <NavLink href="/me">오늘</NavLink>
           <NavLink href="/me/calendar">달력</NavLink>
+          <NavLink href="/me/study">공부</NavLink>
         </nav>
         <form action={signOut} className="ml-auto">
           <button type="submit" className="font-ko text-sm text-ash hover:text-bone">
