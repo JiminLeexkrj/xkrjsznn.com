@@ -25,6 +25,17 @@ export function today() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE }).format(new Date());
 }
 
+const seoulTime = new Intl.DateTimeFormat("en-GB", { timeZone: TIME_ZONE, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+
+/** ISO 시각을 서울 기준 날짜('2026-10-12')와 시각('23:59')으로 */
+export function seoulDateTime(at: string | Date) {
+  const d = new Date(at);
+  return { date: new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE }).format(d), time: seoulTime.format(d) };
+}
+
+/** 서울 기준 그 날의 자정을 ISO 시각으로 */
+export const seoulMidnight = (date: string) => `${date}T00:00:00+09:00`;
+
 export function addDays(date: string, days: number) {
   const d = parse(date);
   d.setUTCDate(d.getUTCDate() + days);
