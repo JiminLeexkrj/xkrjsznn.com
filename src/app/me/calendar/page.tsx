@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { DayList } from "@/components/me/DayList";
 import { EventForm } from "@/components/me/EventForm";
-import { EventRow } from "@/components/me/EventRow";
 import { MonthGrid } from "@/components/me/MonthGrid";
 import { requireOwner } from "@/lib/auth";
 import { addMonths, dayLabel, isISODate, isISOMonth, monthGrid, monthLabel, today as todayISO } from "@/lib/dates";
+import { dayItems } from "@/lib/day-items";
 import { occursOn } from "@/lib/event-types";
 import { getEvent, listEvents } from "@/lib/events";
+import { listLmsMarks } from "@/lib/lms";
 
 export const metadata: Metadata = { title: "달력" };
 
@@ -20,8 +22,14 @@ export default async function CalendarPage({ searchParams }: PageProps<"/me/cale
   const editing = typeof params.e === "string" ? await getEvent(params.e) : null;
 
   const grid = monthGrid(month);
-  const events = await listEvents(grid[0], grid[grid.length - 1]);
-  const dayEvents = events.filter((e) => occursOn(e, selected));
+  const [events, marks] = await Promise.all([
+    listEvents(grid[0], grid[grid.length - 1]),
+    listLmsMarks(grid[0], grid[grid.length - 1]),
+  ]);
+  const dayList = dayItems(
+    events.filter((e) => occursOn(e, selected)),
+    marks.filter((m) => m.date === selected),
+  );
   const here = `/me/calendar?m=${month}&d=${selected}`;
 
   const step = (n: number) => {
@@ -52,7 +60,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/me/cale
             )}
           </nav>
         </div>
-        <MonthGrid month={month} selected={selected} today={today} events={events} />
+        <MonthGrid month={month} selected={selected} today={today} events={events} marks={marks} />
       </section>
 
       <aside aria-labelledby="day-heading" className="lg:pt-[3.75rem]">
@@ -61,12 +69,10 @@ export default async function CalendarPage({ searchParams }: PageProps<"/me/cale
           {selected === today && <span className="ml-2 text-sm text-blood">오늘</span>}
         </h2>
 
-        {dayEvents.length > 0 ? (
-          <ul className="mt-2 divide-y divide-concrete">
-            {dayEvents.map((e) => (
-              <EventRow key={e.id} event={e} editHref={`${here}&e=${e.id}`} countFrom={today} />
-            ))}
-          </ul>
+        {dayList.length > 0 ? (
+          <div className="mt-2">
+            <DayList items={dayList} editHref={(e) => `${here}&e=${e.id}`} countFrom={today} />
+          </div>
         ) : (
           <p className="mt-3 font-ko text-sm text-ash">이 날은 비어 있습니다.</p>
         )}

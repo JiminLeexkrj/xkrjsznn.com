@@ -14,12 +14,16 @@ src/
       page.tsx            오늘 할 일과 앞으로 14일
       calendar/page.tsx   월간 달력
       actions.ts          일정 추가, 고치기, 완료, 삭제
+    api/lms-sync/         KU LMS+ 확장이 LMS 목록을 보내는 곳
   components/me/          내 공간의 화면 조각
   content/                공개 페이지의 내용. 프로젝트와 수상은 여기에 추가한다
   lib/
     auth.ts               주인인지 확인한다 (requireOwner)
     events.ts             일정 읽기 (서버 전용)
     event-types.ts        일정의 모양과 종류
+    lms.ts                LMS 항목 읽기 (서버 전용)
+    lms-types.ts          LMS 항목의 모양과 사이트에 보여 줄 단계
+    day-items.ts          하루의 일정과 LMS 항목을 시각 순으로 합친다
     dates.ts              날짜 계산. '오늘'은 서울 시간 기준
     supabase/             Supabase 클라이언트
   proxy.ts                로그인 세션 갱신
@@ -31,7 +35,7 @@ supabase/migrations/      데이터베이스 스키마
 ## 처음 설정
 
 1. [Supabase](https://supabase.com)에서 프로젝트를 만든다.
-2. SQL Editor에 `supabase/migrations/` 안의 SQL을 붙여 넣고 실행한다.
+2. SQL Editor에 `supabase/migrations/` 안의 SQL을 파일 이름 순서대로 하나씩 붙여 넣고 실행한다.
 3. GitHub에서 OAuth 앱을 만든다 (Settings > Developer settings > OAuth Apps).
    - Authorization callback URL: `https://<프로젝트>.supabase.co/auth/v1/callback`
 4. Supabase의 Authentication > Sign In / Providers > GitHub에 Client ID와 Secret을 넣고 켠다.
@@ -40,6 +44,16 @@ supabase/migrations/      데이터베이스 스키마
    - Redirect URLs: `http://localhost:3000/auth/callback`, `https://xkrjsznn.com/auth/callback`
 6. `.env.example`을 `.env.local`로 복사하고 값을 채운다. Vercel의 Environment Variables에도 같은 값을 넣는다.
 7. 한 번 로그인한 뒤, Authentication > Sign In / Providers에서 **Allow new users to sign up**을 끈다. 다른 사람이 계정을 만들 수 없게 된다.
+
+## LMS 연동
+
+KU LMS+ 확장(원본은 `C:\KuLmsPlus\extension`)이 LMS에서 불러온 과제, 퀴즈, 수업 일정, 영상 출석 마감을 `POST /api/lms-sync`로 보낸다. 확장은 같은 Chrome에 있는 이 사이트의 로그인 쿠키로 부르므로 주인 확인과 RLS는 다른 페이지와 같고, 사이트는 `LMS_EXTENSION_ID`와 같은 확장이 보낸 요청만 받는다. LMS 항목은 `lms_marks`에 따로 두고 사이트에서는 읽기만 한다.
+
+1. `chrome://extensions`에서 확장 카드의 ID를 `LMS_EXTENSION_ID`로 `.env.local`과 Vercel에 넣는다. 압축해제한 확장의 ID는 폴더 경로로 정해지므로, 폴더를 옮기면 ID도 바뀐다.
+2. 같은 Chrome에서 사이트에 로그인해 둔다.
+3. 확장의 캘린더에서 새로고침하면 사이트로도 보낸다. 상단에 "사이트에 반영됨"이 뜨면 된다.
+
+어떤 단계를 사이트에 보여 줄지는 `src/lib/lms-types.ts`의 `SHOWN_STAGES`에서 정한다.
 
 ## 개발
 

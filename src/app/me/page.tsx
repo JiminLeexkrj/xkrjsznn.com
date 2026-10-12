@@ -1,25 +1,38 @@
+import { DayList } from "@/components/me/DayList";
 import { EventForm } from "@/components/me/EventForm";
-import { EventRow } from "@/components/me/EventRow";
 import { requireOwner } from "@/lib/auth";
-import { addDays, dayLabel, daysFrom, today as todayISO, weekdayName } from "@/lib/dates";
+import { addDays, dayLabel, daysFrom, seoulDateTime, today as todayISO, weekdayName } from "@/lib/dates";
+import { dayItems } from "@/lib/day-items";
 import { type CalendarEvent, occursOn } from "@/lib/event-types";
 import { listEvents } from "@/lib/events";
+import { lastLmsSync, listLmsMarks } from "@/lib/lms";
 
 /** 오늘 이후 이만큼의 일정을 미리 본다 */
 const AHEAD = 14;
 
-const editHref = (e: CalendarEvent, day: string) => `/me/calendar?m=${day.slice(0, 7)}&d=${day}&e=${e.id}`;
+const editHref = (day: string) => (e: CalendarEvent) => `/me/calendar?m=${day.slice(0, 7)}&d=${day}&e=${e.id}`;
 
 export default async function TodayPage() {
   await requireOwner();
   const today = todayISO();
   const until = addDays(today, AHEAD);
-  const events = await listEvents(today, until);
+  const [events, marks, syncedAt] = await Promise.all([listEvents(today, until), listLmsMarks(today, until), lastLmsSync()]);
 
-  const todays = events.filter((e) => occursOn(e, today));
+  const todays = dayItems(
+    events.filter((e) => occursOn(e, today)),
+    marks.filter((m) => m.date === today),
+  );
   // 여러 날 일정은 시작하는 날에 한 번만 보여 준다
-  const upcoming = events.filter((e) => e.date > today);
-  const byDay = Map.groupBy(upcoming, (e) => e.date);
+  const upcomingEvents = Map.groupBy(
+    events.filter((e) => e.date > today),
+    (e) => e.date,
+  );
+  const upcomingMarks = Map.groupBy(
+    marks.filter((m) => m.date > today),
+    (m) => m.date,
+  );
+  const upcomingDays = [...new Set([...upcomingEvents.keys(), ...upcomingMarks.keys()])].sort();
+  const synced = syncedAt && seoulDateTime(syncedAt);
 
   return (
     <main className="grid gap-16 pt-6 lg:grid-cols-[1fr_22rem] lg:gap-20">
@@ -36,11 +49,9 @@ export default async function TodayPage() {
             오늘 할 일
           </h2>
           {todays.length > 0 ? (
-            <ul className="mt-2 divide-y divide-concrete">
-              {todays.map((e) => (
-                <EventRow key={e.id} event={e} editHref={editHref(e, today)} countFrom={today} />
-              ))}
-            </ul>
+            <div className="mt-2">
+              <DayList items={todays} editHref={editHref(today)} countFrom={today} />
+            </div>
           ) : (
             <p className="mt-4 font-ko text-ash">오늘은 비어 있습니다. 오른쪽에서 일정을 추가하세요.</p>
           )}
@@ -50,19 +61,19 @@ export default async function TodayPage() {
           <h2 id="ahead-heading" className="font-ko text-sm text-ash">
             앞으로 {AHEAD}일
           </h2>
-          {byDay.size > 0 ? (
+          {upcomingDays.length > 0 ? (
             <ol className="mt-4 flex flex-col gap-8">
-              {[...byDay].map(([day, list]) => (
+              {upcomingDays.map((day) => (
                 <li key={day} className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-6">
                   <p className="pt-3 font-ko text-sm">
                     {dayLabel(day)}
                     <span className="ml-2 text-ash tabular-nums">{daysFrom(today, day)}일 뒤</span>
                   </p>
-                  <ul className="divide-y divide-concrete">
-                    {list.map((e) => (
-                      <EventRow key={e.id} event={e} editHref={editHref(e, day)} countFrom={today} />
-                    ))}
-                  </ul>
+                  <DayList
+                    items={dayItems(upcomingEvents.get(day) ?? [], upcomingMarks.get(day) ?? [])}
+                    editHref={editHref(day)}
+                    countFrom={today}
+                  />
                 </li>
               ))}
             </ol>
@@ -77,6 +88,12 @@ export default async function TodayPage() {
           일정 추가
         </h2>
         <EventForm defaultDate={today} />
+        <p className="mt-10 border-t border-concrete pt-6 font-ko text-xs leading-relaxed text-ash">
+          {synced
+            ? `LMS 항목은 ${dayLabel(synced.date)} ${synced.time}에 마지막으로 받았습니다.`
+            : "LMS 항목을 아직 받지 않았습니다."}{" "}
+          KU LMS+ 확장에서 새로고침하면 다시 받습니다.
+        </p>
       </aside>
     </main>
   );
