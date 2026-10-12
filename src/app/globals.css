@@ -76,6 +76,13 @@ body::after {
 
 /* 진입 화면 ------------------------------------------------------------ */
 
+/* 로딩 표시의 세 고리가 각자 다른 빠르기로 돈다 */
+@keyframes xk-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 html:not([data-entered]) body {
   overflow: hidden;
 }

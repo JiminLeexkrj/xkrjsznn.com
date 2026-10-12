@@ -4,11 +4,21 @@
 export const intro = {
   /** 3D 진입 장면이 첫 프레임들을 그렸는지. 그 전에는 2D 연출로 대신한다. */
   ready: false,
+  /** 0–1, 준비가 얼마나 끝났는지. 로딩 표시가 읽는다. */
+  progress: 0,
   /** 0–1, 누르고 있는 정도 */
   hold: 0,
   /** 폭발이 시작된 시각(performance.now). 시작 전에는 null */
   burstStart: null as number | null,
 };
+
+/**
+ * 준비 단계를 알린다. 진행률은 거꾸로 가지 않는다.
+ * 0.04 페이지 / 0.12 폰트 / 0.3 3D 엔진 / 0.4 렌더러 / 0.62 진입 장면 / 0.66–0.98 3D 글자 / 1 끝
+ */
+export function reportProgress(value: number) {
+  intro.progress = Math.max(intro.progress, Math.min(1, value));
+}
 
 /** 압축부터 착지까지 걸리는 시간 */
 export const BURST_MS = 2600;

@@ -14,7 +14,7 @@ import {
   Quaternion,
   Vector3,
 } from "three";
-import { IMPLODE, burstProgress, intro } from "@/lib/intro-store";
+import { IMPLODE, burstProgress, intro, reportProgress } from "@/lib/intro-store";
 import { DUST, TRIAD } from "./colors";
 import { createConcreteMaterial } from "./concrete-material";
 import { INTRO, rng } from "./layout";
@@ -114,7 +114,10 @@ export function IntroShards({ count, reduced }: { count: number; reduced: boolea
     const st = state.current;
     const delta = Math.min(rawDelta, 0.1);
     // 셰이더가 컴파일되고 몇 프레임 그려진 뒤에야 준비된 것으로 알린다
-    if (++st.frames === 3) intro.ready = true;
+    if (++st.frames === 3) {
+      intro.ready = true;
+      reportProgress(0.62);
+    }
 
     const b = burstProgress();
     if (hidden || b >= 1) {

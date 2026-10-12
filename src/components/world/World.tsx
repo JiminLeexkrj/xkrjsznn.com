@@ -4,6 +4,7 @@ import { SpotLight } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { useMemo, useState } from "react";
 import { useEntered, useGL } from "@/lib/entered";
+import { reportProgress } from "@/lib/intro-store";
 import { CameraRig } from "./CameraRig";
 import { DUST, EMBER, FROST, HOLLOW, domainAt } from "./colors";
 import { DomainRing } from "./DomainRing";
@@ -14,8 +15,12 @@ import { GLChambers } from "./gl-text/GLChambers";
 import { IntroShards } from "./IntroShards";
 import { TROPHY_HALL, generateMonoliths } from "./layout";
 import { Monoliths } from "./Monoliths";
+import { ProjectAccents } from "./ProjectAccents";
 import { ProjectSlabs } from "./ProjectSlabs";
 import { TrophyHall } from "./TrophyHall";
+
+// 이 모듈은 따로 불러온다. 여기까지 왔으면 three.js 묶음이 도착한 것이다.
+reportProgress(0.3);
 
 type Quality = { lite: boolean; reduced: boolean; staged: boolean };
 
@@ -75,6 +80,7 @@ function Scene({ lite, reduced, staged }: Quality) {
       />
 
       <Monoliths slabs={slabs} />
+      <ProjectAccents slabs={slabs} reduced={reduced} />
       <Floor lite={lite} />
       <DomainRing reduced={reduced} />
       {/* 무대 방식에서는 프로젝트가 글을 품은 석판으로 직접 선다. 그 밖에서는 HTML 목록 뒤의 장식으로 둔다. */}
@@ -112,7 +118,10 @@ export default function World() {
         dpr={quality.lite ? [1, 1.25] : [1, 1.5]}
         gl={{ antialias: false, powerPreference: "high-performance" }}
         camera={{ fov: 50, near: 0.1, far: 240, position: [0, 7.3, 100] }}
-        onCreated={() => setReady(true)}      >
+        onCreated={() => {
+          reportProgress(0.4);
+          setReady(true);
+        }}      >
         {/* 순수한 검정보다 아주 조금 뜬 안개. 먼 기둥이 실루엣으로 떠올라 깊이가 생긴다. */}
         <color attach="background" args={["#0d0b0a"]} />
         <fogExp2 attach="fog" args={["#0d0b0a", 0.024]} />

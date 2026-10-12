@@ -6,9 +6,10 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Color, Group, MathUtils, Mesh, MeshBasicMaterial, Quaternion, Vector3 } from "three";
 import { preloadFont } from "troika-three-text";
 import { markGLReady } from "@/lib/entered";
+import { reportProgress } from "@/lib/intro-store";
 import { STOPS, timeline } from "@/lib/timeline";
 import { world } from "@/lib/world-store";
-import { DOMAINS, DUST, EMBER, FROST } from "../colors";
+import { DOMAINS, DUST } from "../colors";
 import { createConcreteMaterial } from "../concrete-material";
 import { widthLadder } from "./fonts";
 import {
@@ -21,7 +22,7 @@ import {
   roomFrame,
   scaleToward,
 } from "./frame";
-import { type CarrierItem, type GLItem, type Measured, type TextItem, measureChambers } from "./measure";
+import { type CarrierItem, type DomainName, type GLItem, type Measured, type TextItem, measureChambers } from "./measure";
 
 type TroikaText = Mesh & {
   font: string;
@@ -55,7 +56,9 @@ const FRACTURE_SECONDS = 0.55;
 const FRACTURE_PATTERN = Array.from({ length: FRACTURE_BANDS }, (_, k) =>
   Array.from({ length: 6 }, (_, beat) => Math.sin(k * 12.9898 + beat * 78.233) * 43758.5453 % 1),
 );
-const FRACTURE_GHOSTS = [FROST, EMBER];
+/** 잔상은 그 글이 속한 영역을 뺀 나머지 두 영역의 색으로 갈라진다 */
+const fractureGhosts = (domain: DomainName) =>
+  (Object.keys(DOMAINS) as DomainName[]).filter((d) => d !== domain).map((d) => DOMAINS[d]);
 const CRACK_GLOW = DUST.clone().multiplyScalar(1.6);
 const CRACK_TILT = new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), -0.11);
 
@@ -130,6 +133,7 @@ export function GLChambers() {
       if (!alive) return;
       const measured = measureChambers();
       const frames = STOPS.map((_, i) => roomFrame(i, measured.width, measured.height));
+      reportProgress(0.66);
       setBuilt({ measured, frames });
     };
     void document.fonts.ready.then(() => requestAnimationFrame(run));
@@ -293,7 +297,11 @@ function Layer({ built }: { built: Built }) {
   const onSync = (i: number) => {
     synced.current.add(i);
     // 모든 글자가 한 번씩 배치되면 HTML을 감추고 3D로 넘긴다
-    if (synced.current.size >= textCount && !document.documentElement.dataset.gl) markGLReady();
+    reportProgress(0.66 + (0.32 * synced.current.size) / Math.max(1, textCount));
+    if (synced.current.size >= textCount && !document.documentElement.dataset.gl) {
+      reportProgress(1);
+      markGLReady();
+    }
   };
 
   const setHover = (root: number) => {
@@ -416,7 +424,7 @@ function Layer({ built }: { built: Built }) {
           if (!ghost) return;
           const side = k === 0 ? 1 : -1;
           ghost.position.copy(mesh.position).addScaledVector(f.planeRight, side * 0.04 * em * swell);
-          (ghost.color instanceof Color ? ghost.color : (ghost.color = new Color())).copy(FRACTURE_GHOSTS[k]);
+          (ghost.color instanceof Color ? ghost.color : (ghost.color = new Color())).copy(fractureGhosts(item.domain)[k]);
           ghost.fillOpacity = cracking ? drawn * 0.26 * swell : 0;
         });
         if (fx.crack) {
@@ -524,7 +532,7 @@ function Layer({ built }: { built: Built }) {
                   </Text>
                   {fx && (
                     <>
-                      {FRACTURE_GHOSTS.map((_, k) => (
+                      {fractureGhosts(it.domain).map((_, k) => (
                         <Text
                           key={`ghost-${k}`}
                           {...common}

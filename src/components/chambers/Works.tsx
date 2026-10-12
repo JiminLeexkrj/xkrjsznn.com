@@ -21,8 +21,11 @@ export function Works() {
                 href={project.href}
                 className="group flex flex-col gap-3 py-6 md:flex-row md:items-end md:justify-between md:gap-10 md:py-9"
               >
-                {/* 마우스를 올리면 장체에서 평체로 넓어진다. 3D에서는 폭이 다른 폰트를 단계적으로 갈아 끼운다. */}
-                <span className="wdth-62 text-[clamp(2.75rem,8vw,7.5rem)] leading-[0.85] font-black transition-[font-variation-settings,color] duration-500 ease-out group-hover:wdth-112 group-hover:text-domain group-focus-visible:wdth-112">
+                {/* 3D에서는 마우스를 올리면 공간이 금 가듯 일그러졌다가 영역의 색으로 바뀐다 */}
+                <span
+                  data-gl-effect="fracture"
+                  className="wdth-62 text-[clamp(2.75rem,8vw,7.5rem)] leading-[0.85] font-black transition-colors duration-500 group-hover:text-domain group-focus-visible:text-domain"
+                >
                   {project.title}
                 </span>
                 <span className="flex shrink-0 flex-col text-sm text-ash md:items-end md:text-base">

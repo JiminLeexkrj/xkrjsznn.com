@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { profile } from "@/content/profile";
-import { IMPLODE, REVEAL_AT, burstProgress, intro } from "@/lib/intro-store";
+import { IMPLODE, REVEAL_AT, burstProgress, intro, reportProgress } from "@/lib/intro-store";
 import { sound } from "@/lib/sound";
 import { SoundToggle } from "../SoundToggle";
 import { createDomainRenderer } from "./domain-renderer";
@@ -11,6 +11,8 @@ const HOLD_MS = 1400;
 const RELEASE_MS = 600;
 const EXPAND_MS = 1800;
 const FADE_MS = 500;
+/** 이만큼 기다려도 준비가 끝나지 않으면 있는 것만으로 연다 */
+const LOAD_TIMEOUT_MS = 15000;
 export const ENTERED_KEY = "xk-entered";
 
 const CODE = profile.code.split("");
@@ -18,18 +20,26 @@ const CODE = profile.code.split("");
 const KOREAN_KEY: Record<string, string> = { x: "ㅌ", k: "ㅏ", r: "ㄱ", j: "ㅓ", s: "ㄴ", z: "ㅋ", n: "ㅜ" };
 const GLYPHS = "アカサタナハマヤラワ無形黒赫紫刻境界虚ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎ#%&§¶†‡".split("");
 
+/** 로딩 표시의 세 고리: 반지름, 영역 색, 한 바퀴 시간(초), 방향 */
+const ORBITS = [
+  { r: 13, color: "var(--color-hollow)", period: 2.6, reverse: false },
+  { r: 17, color: "var(--color-frost)", period: 3.7, reverse: true },
+  { r: 21, color: "var(--color-ember)", period: 5.1, reverse: false },
+];
+
 function randomGlyph(char: string) {
   if (Math.random() < 0.3) return KOREAN_KEY[char] ?? char;
   return GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
 }
 
 /**
+ * loading: 검은 화면에 로딩 표시만 있다. 3D 장면과 글자가 다 준비될 때까지 기다린다.
  * idle: 기다리는 중
  * world: 3D 세계 안에서 조각이 압축되고 터지며 카메라가 날아든다
- * flat: 3D가 아직 준비되지 않아 2D 셰이더로 대신 펼친다
- * fade: 움직임 줄이기 설정이거나 WebGL이 없어 그냥 걷힌다
+ * flat: 3D가 준비되지 않아 2D 셰이더로 대신 펼친다
+ * fade: WebGL이 없어 그냥 걷힌다
  */
-type Phase = "idle" | "world" | "flat" | "fade" | "done";
+type Phase = "loading" | "idle" | "world" | "flat" | "fade" | "done";
 
 export function Intro() {
   const [done, setDone] = useState(false);
@@ -40,6 +50,9 @@ export function Intro() {
   const promptRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
+  const loaderRef = useRef<HTMLDivElement>(null);
+  const arcRefs = useRef<(SVGCircleElement | null)[]>([]);
+  const countRef = useRef<HTMLParagraphElement>(null);
   const input = useRef({ holding: false, center: [0.5, 0.5] as [number, number], skip: false });
 
   useEffect(() => {
@@ -50,15 +63,22 @@ export function Intro() {
     const overlay = overlayRef.current!;
     const backdrop = backdropRef.current!;
     const canvas = canvasRef.current!;
+    const loader = loaderRef.current!;
     const cells = Array.from(codeRef.current!.children) as HTMLElement[];
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let flat = reduced ? null : createDomainRenderer(canvas);
+    const staged = Boolean(root.dataset.stage);
+    const hasWebGL = Boolean(document.createElement("canvas").getContext("webgl2"));
+    let flat = reduced || !hasWebGL ? null : createDomainRenderer(canvas);
 
-    let phase: Phase = "idle";
+    reportProgress(0.04);
+    void document.fonts.ready.then(() => reportProgress(0.12));
+
+    let phase: Phase = "loading";
     let hold = 0;
     let phaseStart = 0;
     let lastGlyph = 0;
-    let worldShown = false;
+    let revealAt = 0;
+    let shown = 0;
     const start = performance.now();
     let last = start;
     let raf = 0;
@@ -74,6 +94,30 @@ export function Intro() {
     const dropFlat = () => {
       flat?.destroy();
       flat = null;
+    };
+
+    /** 준비가 끝났다: 로딩 고리가 닫히며 사라지고, 이름이 해독되기 시작한다 */
+    const reveal = (now: number) => {
+      phase = "idle";
+      revealAt = now;
+      loader.style.opacity = "0";
+      loader.style.transform = "scale(0.6)";
+      if (intro.ready) {
+        // 3D 진입 장면이 검은 막 뒤에 이미 그려져 있다. 막을 걷어 허공을 드러낸다.
+        backdrop.style.opacity = "0";
+        dropFlat();
+      } else if (flat) {
+        canvas.style.opacity = "1";
+      }
+      const fadeIn = (el: HTMLElement, delay: number) => {
+        el.style.transition = `opacity 900ms ease ${delay}ms`;
+        el.style.opacity = "1";
+        setTimeout(() => (el.style.transition = "none"), delay + 950);
+      };
+      fadeIn(codeRef.current!, 250);
+      fadeIn(promptRef.current!, 1300);
+      fadeIn(controlsRef.current!, 1600);
+      controlsRef.current!.inert = false;
     };
 
     const enter = () => {
@@ -111,12 +155,23 @@ export function Intro() {
         return;
       }
 
-      // 3D 세계가 준비되면 검은 막을 걷고 그 뒤의 허공을 보여 준다
-      if (!worldShown && intro.ready && phase === "idle") {
-        worldShown = true;
-        backdrop.style.opacity = "0";
-        canvas.style.opacity = "0";
-        setTimeout(dropFlat, 1200);
+      if (phase === "loading") {
+        // 3D 진입 장면이 그려졌고, 장면의 글자까지 3D로 옮겨졌으면 준비 끝
+        const ready =
+          (intro.ready && (!staged || root.dataset.gl === "on")) || !hasWebGL || now - start > LOAD_TIMEOUT_MS;
+        const target = ready ? 1 : intro.progress;
+        shown += (target - shown) * (1 - Math.exp(-dt / 220));
+        arcRefs.current.forEach((arc, k) => {
+          if (!arc) return;
+          const circumference = 2 * Math.PI * ORBITS[k].r;
+          // 진행될수록 호가 길어져 원이 닫혀 간다. 고리마다 조금씩 늦게 닫힌다.
+          const amount = Math.min(1, Math.max(0.08, shown * (1.08 - k * 0.04)));
+          arc.style.strokeDasharray = `${(circumference * amount * 0.97).toFixed(1)} ${circumference.toFixed(1)}`;
+        });
+        countRef.current!.textContent = String(Math.min(100, Math.floor(shown * 100))).padStart(3, "0");
+        if (ready && shown > 0.985) reveal(now);
+        raf = requestAnimationFrame(tick);
+        return;
       }
 
       if (phase === "idle") {
@@ -150,11 +205,11 @@ export function Intro() {
         }
       }
 
-      // 글자 해독: 처음엔 차례로 제자리를 찾고, 누를수록 다시 흔들린다
+      // 글자 해독: 드러난 뒤 차례로 제자리를 찾고, 누를수록 다시 흔들린다
       const swap = now - lastGlyph > 55;
       if (swap) lastGlyph = now;
       cells.forEach((cell, i) => {
-        const resolved = now - start > 350 + i * 110;
+        const resolved = now - revealAt > 650 + i * 110;
         const glitch = out > 0 || (resolved && Math.random() < hold * hold * 0.35);
         if (!resolved || glitch) {
           if (swap) cell.textContent = randomGlyph(CODE[i]);
@@ -165,7 +220,11 @@ export function Intro() {
 
       const code = codeRef.current!;
       if (out > 0) {
-        for (const el of [code, promptRef.current!, controlsRef.current!]) el.style.opacity = String(1 - out);
+        // 드러나자마자 눌러 들어오면 페이드인 트랜지션이 아직 걸려 있다. 끊고 바로 따라가게 한다.
+        for (const el of [code, promptRef.current!, controlsRef.current!]) {
+          el.style.transition = "none";
+          el.style.opacity = String(1 - out);
+        }
         code.style.transform = `scale(${1 + out * 0.6})`;
       } else {
         const jitter = hold * hold * 6;
@@ -174,9 +233,7 @@ export function Intro() {
       }
       barRef.current!.style.transform = `scaleX(${hold})`;
 
-      if (flat && (!worldShown || phase === "flat")) {
-        flat.render({ time: (now - start) / 1000, hold, expand: flatExpand, center });
-      }
+      if (flat) flat.render({ time: (now - start) / 1000, hold, expand: flatExpand, center });
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -223,19 +280,63 @@ export function Intro() {
       onPointerLeave={release}
       onContextMenu={(e) => e.preventDefault()}
     >
-      {/* 3D 세계가 준비되기 전까지 가리는 막. 준비되면 걷혀 뒤의 허공이 보인다. */}
-      <div ref={backdropRef} aria-hidden className="absolute inset-0 bg-void transition-opacity duration-[1200ms]" />
+      {/* 준비가 끝날 때까지 가리는 막. 준비되면 걷혀 뒤의 허공이 보인다. */}
+      <div ref={backdropRef} aria-hidden className="absolute inset-0 bg-void transition-opacity duration-[1400ms]" />
       <canvas
         ref={canvasRef}
         aria-hidden
-        className="absolute inset-0 h-full w-full transition-opacity duration-[1200ms]"
+        className="absolute inset-0 h-full w-full opacity-0 transition-opacity duration-[1200ms]"
       />
+
+      {/* 로딩 표시: 세 영역의 고리가 각자 돌며 닫혀 가고, 가운데에 xkrjsznn의 첫 글자가 있다 */}
+      <div
+        ref={loaderRef}
+        role="status"
+        aria-label="불러오는 중"
+        className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center transition-[opacity,transform] duration-700 ease-out"
+      >
+        <div className="relative size-12">
+          <svg viewBox="0 0 48 48" className="absolute inset-0 size-full" aria-hidden>
+            {ORBITS.map((o, k) => (
+              <g
+                key={k}
+                style={{
+                  transformOrigin: "24px 24px",
+                  animation: `xk-orbit ${o.period}s linear infinite${o.reverse ? " reverse" : ""}`,
+                }}
+              >
+                <circle
+                  ref={(el) => {
+                    arcRefs.current[k] = el;
+                  }}
+                  cx="24"
+                  cy="24"
+                  r={o.r}
+                  fill="none"
+                  stroke={o.color}
+                  strokeWidth="0.9"
+                  strokeDasharray={`2 ${2 * Math.PI * o.r}`}
+                />
+              </g>
+            ))}
+          </svg>
+          <span
+            aria-hidden
+            className="absolute inset-0 flex items-center justify-center font-gothic text-[13px] leading-none text-dust/80"
+          >
+            x
+          </span>
+        </div>
+        <p ref={countRef} aria-hidden className="mt-5 wdth-62 text-[11px] tracking-[0.35em] text-ash tabular-nums">
+          000
+        </p>
+      </div>
 
       <div className="relative flex h-full flex-col items-center justify-center px-4">
         <p
           ref={codeRef}
           aria-label={profile.code}
-          className="flex text-[clamp(3rem,13vw,9.5rem)] leading-none text-dust will-change-transform [text-shadow:0_0_40px_rgba(0,0,0,0.8)]"
+          className="flex text-[clamp(3rem,13vw,9.5rem)] leading-none text-dust opacity-0 will-change-transform [text-shadow:0_0_40px_rgba(0,0,0,0.8)]"
           style={{ fontFamily: "var(--font-unifraktur), var(--font-hahmlet), var(--font-shippori), serif" }}
         >
           {CODE.map((_, i) => (
@@ -245,7 +346,7 @@ export function Intro() {
           ))}
         </p>
 
-        <div ref={promptRef} className="mt-14 flex flex-col items-center gap-2 text-center">
+        <div ref={promptRef} className="mt-14 flex flex-col items-center gap-2 text-center opacity-0">
           <p lang="ko" className="font-ko text-base md:text-lg">
             누르고 있으면 열립니다
           </p>
@@ -254,14 +355,19 @@ export function Intro() {
             <span className="hidden [@media(pointer:fine)]:inline">, or hold Space</span>
           </p>
           <div aria-hidden className="mt-3 h-px w-40 bg-concrete">
-            <div ref={barRef} className="h-full origin-left scale-x-0 bg-[linear-gradient(90deg,var(--color-hollow),var(--color-frost),var(--color-ember))]" />
+            <div
+              ref={barRef}
+              className="h-full origin-left scale-x-0 bg-[linear-gradient(90deg,var(--color-hollow),var(--color-frost),var(--color-ember))]"
+            />
           </div>
         </div>
       </div>
 
       <div
         ref={controlsRef}
-        className="absolute inset-x-0 bottom-6 flex justify-center gap-10 text-sm md:bottom-10"
+        // 로딩 중에는 보이지 않으니 누르거나 초점을 옮길 수도 없게 한다
+        inert
+        className="absolute inset-x-0 bottom-6 flex justify-center gap-10 text-sm opacity-0 md:bottom-10"
         onPointerDown={(e) => e.stopPropagation()}
       >
         <SoundToggle />
