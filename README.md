@@ -70,7 +70,9 @@ KU LMS+ 확장(원본은 `C:\KuLmsPlus\extension`)이 LMS에서 불러온 과제
 - **올리기**: Vercel 함수는 4.5MB가 넘는 요청을 받지 못하므로, 서버가 서명 업로드 표를 내주고 브라우저가 Supabase Storage의 비공개 버킷 `study-pdfs`에 바로 올린다. 파일 하나에 50MB까지.
 - **해설 쓰기**: 뷰어가 열려 있는 동안, 지금 페이지부터 비어 있는 페이지를 두 장씩 채운다. 브라우저가 페이지를 JPEG와 글자로 뽑아 `/api/study/explain`에 보내고, 서버가 모델을 부른 뒤 저장한다. 뷰어를 닫으면 멈추고, 다시 열면 남은 페이지부터 이어 쓴다.
 - **환경 변수**: `OPENAI_API_KEY`(필수), `OPENAI_MODEL`(기본 `gpt-6-luna`), `OPENAI_REASONING_EFFORT`(선택). `.env.local`과 Vercel에 같은 값을 넣는다.
-- 프롬프트는 `src/lib/openai.ts`의 `INSTRUCTIONS`에서 고친다.
+- **퀴즈**: 자료마다 핵심 개념 퀴즈 20문제(4지선다와 O/X)를 만든다. 브라우저가 PDF 전체의 글자를 뽑아 `/api/study/quiz`에 보내면, 서버가 저장된 해설을 붙여 모델에 넘기고 `study_quizzes`에 저장한다. 고른 답도 저장되어 다시 열면 이어서 푼다.
+- 프롬프트는 `src/lib/openai.ts`의 `INSTRUCTIONS`(해설)와 `QUIZ_INSTRUCTIONS`(퀴즈)에서 고친다.
+- 프로젝트 안의 자료는 이름순으로, 이름 속 숫자는 숫자로 비교해 정렬한다 (`2.`가 `10.`보다 앞).
 
 ## 개발
 

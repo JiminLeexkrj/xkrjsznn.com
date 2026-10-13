@@ -47,6 +47,9 @@ export default async function ProjectPage({ params }: PageProps<"/me/study/[proj
                         해설 {d.explained}/{d.page_count}
                       </span>
                       {d.last_page > 1 && <span>{d.last_page}쪽까지 봄</span>}
+                      <Link href={`/me/study/${projectId}/${d.id}/quiz`} className="text-violet hover:text-bone">
+                        퀴즈
+                      </Link>
                       <span>{formatBytes(d.size_bytes)}</span>
                     </p>
                   </div>

@@ -5,22 +5,11 @@ import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from "pdfjs
 import { useCallback, useEffect, useRef, useState } from "react";
 import { saveLastPage } from "@/app/me/study/actions";
 import { openPdf, pageImage, pageText } from "@/lib/pdfjs";
+import { FATAL, errorText, postJson } from "./errors";
 import { Explanation } from "./Explanation";
 
 /** 동시에 쓰는 해설 수. 지금 보는 페이지는 이 수와 상관없이 바로 시작한다. */
 const CONCURRENCY = 2;
-
-const ERRORS: Record<string, string> = {
-  login: "로그인이 끊겼습니다. 다시 로그인한 뒤 새로고침하세요.",
-  "not-configured": "서버에 OPENAI_API_KEY가 설정되지 않았습니다.",
-  "openai-key": "OpenAI API 키가 올바르지 않습니다. 키를 확인하세요.",
-  "openai-limit": "OpenAI 사용 한도에 걸렸습니다. 잠시 뒤 다시 시도하거나 결제 잔액을 확인하세요.",
-  openai: "모델이 해설을 쓰지 못했습니다. 다시 시도하세요.",
-};
-const errorText = (code: string) => ERRORS[code] ?? `해설을 만들지 못했습니다. (${code})`;
-
-// 이 오류는 다른 페이지에서도 똑같이 나므로 자동 해설을 멈춘다
-const FATAL = new Set(["login", "not-configured", "openai-key", "openai-limit"]);
 
 /** 해설을 쓸 순서. 지금 페이지부터 끝까지, 그다음 처음부터 지금 페이지 앞까지. */
 const order = (from: number, count: number) => Array.from({ length: count }, (_, i) => ((from - 1 + i) % count) + 1);
@@ -193,14 +182,16 @@ export function StudyViewer({
       try {
         const p = await pdf.getPage(n);
         const [image, text, prevText, nextText] = await Promise.all([pageImage(p), textOf(n), textOf(n - 1), textOf(n + 1)]);
-        const res = await fetch("/api/study/explain", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ documentId, page: n, image, text, prevText, nextText, force }),
+        const { content } = await postJson<{ content: string }>("/api/study/explain", {
+          documentId,
+          page: n,
+          image,
+          text,
+          prevText,
+          nextText,
+          force,
         });
-        const body = await res.json().catch(() => ({}));
-        if (!res.ok || typeof body.content !== "string") throw new Error(body.error ?? `HTTP ${res.status}`);
-        setExplanations((e) => ({ ...e, [n]: body.content }));
+        setExplanations((e) => ({ ...e, [n]: content }));
       } catch (err) {
         const code = err instanceof Error ? err.message : "openai";
         if (FATAL.has(code)) setHalted(code);
@@ -287,6 +278,9 @@ export function StudyViewer({
         </nav>
 
         <div className="flex items-center gap-4 font-ko text-xs text-ash">
+          <Link href={`/me/study/${projectId}/${documentId}/quiz`} className="text-violet hover:text-bone">
+            퀴즈 풀기
+          </Link>
           <span className="tabular-nums" aria-live="polite">
             해설 {done}/{pageCount}
             {working.length > 0 && <span className="text-violet"> · 쓰는 중</span>}

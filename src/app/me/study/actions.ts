@@ -116,6 +116,15 @@ export async function deleteDocument(id: string) {
   revalidatePath("/me/study", "layout");
 }
 
+/** 퀴즈에서 고른 답을 저장한다. 비운 객체를 보내면 처음부터 다시 푼다. */
+export async function saveQuizAnswers(documentId: string, answers: Record<string, number>) {
+  const { supabase } = await requireOwner();
+  const clean = Object.fromEntries(
+    Object.entries(answers).filter(([k, v]) => /^\d{1,3}$/.test(k) && Number.isInteger(v) && v >= 0 && v < 10),
+  );
+  await supabase.from("study_quizzes").update({ answers: clean }).eq("document_id", documentId);
+}
+
 /** 보던 페이지를 기억한다. 다시 열면 여기서 시작한다. */
 export async function saveLastPage(id: string, page: number) {
   const { supabase } = await requireOwner();

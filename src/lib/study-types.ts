@@ -36,3 +36,29 @@ export const studyPdfPath = (userId: string, documentId: string) => `${userId}/$
 /** 12.3 MB */
 export const formatBytes = (bytes: number) =>
   bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+
+// ---------- 퀴즈 ----------
+
+/** 자료 하나에 만드는 퀴즈 문제 수 */
+export const QUIZ_SIZE = 20;
+
+export type QuizQuestion = {
+  /** 이 문제가 확인하는 핵심 개념. 목록에서 정리 노트처럼 보인다. */
+  concept: string;
+  /** 4지선다 또는 O/X */
+  type: "choice" | "ox";
+  question: string;
+  options: string[];
+  /** 정답 보기의 번호 (0부터) */
+  answer: number;
+  explanation: string;
+  /** 근거가 되는 페이지 */
+  pages: number[];
+};
+
+export type StudyQuiz = {
+  questions: QuizQuestion[];
+  /** 문제 번호를 키로 하는 고른 보기 번호 */
+  answers: Record<string, number>;
+  created_at: string;
+};
